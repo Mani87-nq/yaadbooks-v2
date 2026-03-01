@@ -25,4 +25,13 @@ export default withSentryConfig(nextConfig, {
 
   // Disable Sentry build-time features if no DSN configured
   disableLogger: true,
+
+  // CRITICAL: Disable automatic page/component wrapping.
+  // Sentry's auto-wrap injects error boundaries around pages/layouts that
+  // interfere with Next.js 16's React 19 transition system, causing the
+  // scheduler to get stuck with expired lanes and breaking all client-side
+  // navigation (router.push, Link clicks).
+  autoInstrumentServerFunctions: false,
+  autoInstrumentMiddleware: false,
+  autoInstrumentAppDirectory: false,
 });

@@ -201,6 +201,11 @@ export function GlobalSearch() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [results, setResults] = useState<CategoryResults[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // Detect macOS client-side only to avoid hydration mismatch (server always renders 'Ctrl')
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(/Mac/i.test(navigator.userAgent ?? ''));
+  }, []);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -362,7 +367,7 @@ export function GlobalSearch() {
             className="w-64 lg:w-96 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 py-2 pl-10 pr-20 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:inline-flex items-center gap-0.5 rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400 select-none">
-            <span className="text-xs">{typeof navigator !== 'undefined' && /Mac/i.test(navigator.userAgent ?? '') ? '\u2318' : 'Ctrl'}</span>
+            <span className="text-xs">{isMac ? '\u2318' : 'Ctrl'}</span>
             <span>K</span>
           </kbd>
         </div>

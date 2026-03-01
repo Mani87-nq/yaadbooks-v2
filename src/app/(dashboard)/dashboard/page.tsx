@@ -33,26 +33,8 @@ const fadeSlideUpStyle = (delay: number): React.CSSProperties => ({
   animation: `fadeSlideUp 0.5s ease-out ${delay}ms both`,
 });
 
-const globalKeyframes = `
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
-}
-`;
+// Keyframes (fadeSlideUp, shimmer, pulseGlow) are defined in globals.css
+// to avoid hydration mismatches from inline <style> tags.
 
 // ============================================
 // GREETING HELPER
@@ -185,10 +167,6 @@ export default function DashboardPage() {
   const firstName = user?.firstName || 'there';
 
   return (
-    <>
-      {/* Inject keyframes */}
-      <style>{globalKeyframes}</style>
-
       <div className="space-y-8 pb-8">
         {/* ─── WELCOME HEADER ─────────────────────────────────────────── */}
         <div data-tour="dashboard-welcome" style={fadeSlideUpStyle(0)} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 p-8 lg:p-10 shadow-lg dark:shadow-gray-900/30">
@@ -547,6 +525,5 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </>
   );
 }
