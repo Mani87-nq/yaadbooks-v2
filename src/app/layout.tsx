@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from 'next-themes';
-import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { PostHogProvider } from "@/components/PostHogProvider";
+// import { ThemeProvider } from 'next-themes';
+// import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+// import { PostHogProvider } from "@/components/PostHogProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -87,12 +87,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <PostHogProvider>
-            {children}
-          </PostHogProvider>
-          <ServiceWorkerRegistration />
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );
