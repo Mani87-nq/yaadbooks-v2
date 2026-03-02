@@ -103,46 +103,49 @@ export function useDataHydration() {
               ? 'staff'
               : 'user';
 
-        // Set user in store
-        store.getState().setUser({
-          id: meData.user.id,
-          email: meData.user.email,
-          firstName: meData.user.firstName,
-          lastName: meData.user.lastName,
-          phone: meData.user.phone ?? undefined,
-          role: appRole,
-          activeCompanyId: meData.user.activeCompanyId ?? undefined,
-          avatarUrl: meData.user.avatarUrl ?? undefined,
-          createdAt: meData.user.createdAt,
-        });
-
-        // Store the real RBAC role for permission checks (usePermissions hook)
-        store.getState().setUserRole(rbacRole);
-
-        store.getState().setAuthenticated(true);
-
         // ── Step 2: Fetch full company objects ───────────────────────
         const companiesRes = await api.get<CompaniesResponse>('/api/v1/companies');
         const companies: Company[] = companiesRes.data.map(({ role, ...company }) => company);
-
-        store.getState().setCompanies(companies);
 
         // Determine active company
         const activeCompanyId = meData.user.activeCompanyId;
         const activeCompany =
           companies.find((c) => c.id === activeCompanyId) ?? companies[0] ?? null;
 
-        store.getState().setActiveCompany(activeCompany);
+        // ── Batch user + company data into ONE setState call ─────────
+        // Previously we called 6 individual setters (setUser, setUserRole,
+        // setAuthenticated, setCompanies, setActiveCompany, setOnboarded),
+        // each triggering Zustand subscribers. Components subscribed to the
+        // full store (Sidebar, Header) would re-render 6× with 50+ Link
+        // components, overwhelming React 19's scheduler with expired lanes.
+        const isOnboarded = activeCompany?.onboardingCompleted === true;
+
+        store.setState((prev) => ({
+          ...prev,
+          user: {
+            id: meData.user.id,
+            email: meData.user.email,
+            firstName: meData.user.firstName,
+            lastName: meData.user.lastName,
+            phone: meData.user.phone ?? undefined,
+            role: appRole,
+            activeCompanyId: meData.user.activeCompanyId ?? undefined,
+            avatarUrl: meData.user.avatarUrl ?? undefined,
+            createdAt: meData.user.createdAt,
+          },
+          userRole: rbacRole,
+          isAuthenticated: true,
+          companies,
+          activeCompany,
+          isOnboarded,
+        }));
 
         if (!activeCompany) {
           // User has no companies — still mark as hydrated
-          store.getState().setOnboarded(false);
           store.setState({ hydrated: true });
           setIsLoading(false);
           return;
         }
-
-        store.getState().setOnboarded(activeCompany.onboardingCompleted === true);
 
         // ── Step 3: Fetch company-scoped data in parallel ────────────
         // Also hydrate module store with active modules for this company

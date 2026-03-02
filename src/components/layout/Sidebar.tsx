@@ -188,7 +188,16 @@ function Badge({ type }: { type: string }) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarOpen, toggleSidebar, setSidebarOpen, activeCompany } = useAppStore();
+  // ── Atomic Zustand selectors ────────────────────────────────────
+  // CRITICAL: useAppStore() without a selector subscribes to the ENTIRE
+  // store.  When useDataHydration updates 14 entity types the Sidebar
+  // (50+ Link components) would re-render on every single change and
+  // overwhelm the React 19 scheduler, causing expired lanes that block
+  // all client-side navigation.
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const activeCompany = useAppStore((s) => s.activeCompany);
   const { can } = usePermissions();
   const activeModuleIds = useActiveModuleIds();
 

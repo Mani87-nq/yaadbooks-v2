@@ -22,7 +22,18 @@ import { useTheme } from 'next-themes';
 
 export function Header() {
   const router = useRouter();
-  const { setSidebarOpen, user, activeCompany, companies, switchCompany, clearCompanyData, settings } = useAppStore();
+  // ── Atomic Zustand selectors ────────────────────────────────────
+  // CRITICAL: useAppStore() without a selector subscribes to the ENTIRE
+  // store — every data-hydration change re-renders the Header.  Use
+  // individual selectors so we only re-render when the value we need
+  // actually changes.
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const user = useAppStore((s) => s.user);
+  const activeCompany = useAppStore((s) => s.activeCompany);
+  const companies = useAppStore((s) => s.companies);
+  const switchCompany = useAppStore((s) => s.switchCompany);
+  const clearCompanyData = useAppStore((s) => s.clearCompanyData);
+  const settings = useAppStore((s) => s.settings);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);

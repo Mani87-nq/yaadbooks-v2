@@ -54,20 +54,20 @@ interface TargetRect {
 }
 
 export function TourProvider({ children }: TourProviderProps) {
-  const store = useTourStore();
-  const {
-    activeTourId,
-    currentStep,
-    initialized,
-    initialize,
-    startTour: storeStartTour,
-    nextStep,
-    prevStep,
-    completeTour,
-    skipTour,
-    isTourCompleted,
-    resetTour: storeResetTour,
-  } = store;
+  // ── Atomic Zustand selectors ──────────────────────────────────
+  // useTourStore() without a selector subscribes to the ENTIRE store.
+  // Use individual selectors so re-renders only fire when necessary.
+  const activeTourId = useTourStore((s) => s.activeTourId);
+  const currentStep = useTourStore((s) => s.currentStep);
+  const initialized = useTourStore((s) => s.initialized);
+  const initialize = useTourStore((s) => s.initialize);
+  const storeStartTour = useTourStore((s) => s.startTour);
+  const nextStep = useTourStore((s) => s.nextStep);
+  const prevStep = useTourStore((s) => s.prevStep);
+  const completeTour = useTourStore((s) => s.completeTour);
+  const skipTour = useTourStore((s) => s.skipTour);
+  const isTourCompleted = useTourStore((s) => s.isTourCompleted);
+  const storeResetTour = useTourStore((s) => s.resetTour);
 
   const [activeTour, setActiveTour] = useState<TourDefinition | null>(null);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
