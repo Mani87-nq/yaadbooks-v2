@@ -122,6 +122,52 @@ export function DashboardLayoutClient({
     setMounted(true);
   }, []);
 
+  // ── WORKAROUND: Force MPA navigation for all internal links ──────
+  // React 19.x + Next.js 16.x has a systemic issue where the React
+  // scheduler accumulates expired transition lanes (bits 18-19) that
+  // permanently block ALL client-side navigation (startTransition,
+  // router.push, Link clicks). The root cause appears to be in how
+  // React 19's scheduler handles the large component tree during the
+  // initial mount transition (Sidebar with 50+ Links, TanStack Query
+  // providers, Zustand useSyncExternalStore, etc.).
+  //
+  // This interceptor catches all internal link clicks at the DOM
+  // capture phase (before React/Next.js processes them) and forces
+  // full-page navigation instead. This bypasses the stuck scheduler
+  // entirely. For an authenticated SaaS dashboard, the ~200ms
+  // difference between SPA and MPA navigation is imperceptible.
+  //
+  // This can be removed when React 19 / Next.js 16 resolves the
+  // expired transition lane issue.
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      // Don't intercept modified clicks (ctrl+click → new tab, etc.)
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+      const anchor = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
+      if (!anchor) return;
+
+      // Don't intercept external links, new-tab links, or downloads
+      if (anchor.target === '_blank' || anchor.download) return;
+      if (!anchor.href.startsWith(window.location.origin)) return;
+
+      // Don't intercept same-page hash links
+      const url = new URL(anchor.href);
+      if (url.pathname === window.location.pathname && url.hash) return;
+
+      // Don't intercept if already on the target page
+      if (url.pathname === window.location.pathname && !url.hash) return;
+
+      // Force MPA navigation — bypasses React's stuck scheduler
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = anchor.href;
+    }
+
+    document.addEventListener('click', handleClick, true); // capture phase
+    return () => document.removeEventListener('click', handleClick, true);
+  }, []);
+
   // ── Server render + client first render: static skeleton ──────────
   // Both produce identical HTML → zero hydration mismatches → zero
   // React error #418 → zero expired transition lanes → working navigation.
