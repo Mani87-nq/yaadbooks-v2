@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { verifyCronSecret } from '@/lib/cron-auth';
 
 /** Jamaica tax deadlines with their recurring schedules. */
 const TAX_DEADLINES = [
@@ -19,11 +20,9 @@ const TAX_DEADLINES = [
 ] as const;
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Verify cron secret (timing-safe comparison)
+  const authError = verifyCronSecret(request);
+  if (authError) return authError;
 
   try {
     const now = new Date();

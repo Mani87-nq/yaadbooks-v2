@@ -359,12 +359,12 @@ export default async function LandingPage() {
                 For shops, boutiques, and stores. Loyalty programs, promotions, customer segments, and retail analytics.
               </p>
               <ul className="space-y-2 mb-6">
-                {['Loyalty point programs', 'Promotion engine with promo codes', 'Customer segmentation', 'Member cards &amp; tiers', 'Retail-specific reports'].map((f, i) => (
+                {['Loyalty point programs', 'Promotion engine with promo codes', 'Customer segmentation', 'Member cards & tiers', 'Retail-specific reports'].map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
                     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span dangerouslySetInnerHTML={{ __html: f }} />
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>

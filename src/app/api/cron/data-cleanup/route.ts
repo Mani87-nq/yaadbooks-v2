@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { disposeExpiredTrialAccounts, TRIAL_DISPOSAL_DAYS } from '@/lib/data-retention';
+import { verifyCronSecret } from '@/lib/cron-auth';
 
 /** Data retention periods */
 const RETENTION = {
@@ -25,12 +26,9 @@ const RETENTION = {
 } as const;
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Verify cron secret (timing-safe comparison)
+  const authError = verifyCronSecret(request);
+  if (authError) return authError;
 
   try {
     const now = new Date();

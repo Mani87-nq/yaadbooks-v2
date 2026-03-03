@@ -223,8 +223,20 @@ export async function middleware(request: NextRequest) {
 
     // Clear stale cookies so the login page starts clean
     const response = NextResponse.redirect(loginUrl);
-    response.cookies.delete('accessToken');
-    response.cookies.delete(REFRESH_TOKEN_COOKIE);
+    response.cookies.set('accessToken', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
+    response.cookies.set(REFRESH_TOKEN_COOKIE, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
     return response;
   }
 
