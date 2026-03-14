@@ -25,6 +25,8 @@ export {
   checkUserLimit,
   checkCompanyLimit,
   checkInvoiceLimit,
+  checkQuotationLimit,
+  checkCustomerLimit,
   checkPayrollLimit,
   checkStorageLimit,
   checkAILimit,

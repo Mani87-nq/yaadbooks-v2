@@ -88,63 +88,93 @@ export interface TierLimits {
   maxUsers: number;           // -1 = unlimited
   maxCompanies: number;       // -1 = unlimited
   maxInvoicesPerMonth: number; // -1 = unlimited
+  maxQuotationsPerMonth: number; // -1 = unlimited
+  maxCustomers: number;       // -1 = unlimited
   maxPayrollEmployees: number; // -1 = unlimited
   maxStorageMb: number;       // -1 = unlimited
   maxAiQuestionsPerMonth: number; // -1 = unlimited
   maxLocations: number;       // -1 = unlimited
   includesModules: number;    // Number of industry modules, -1 = all
+  reportHistoryDays: number;  // -1 = unlimited, else days of history
+  invoiceWatermark: boolean;  // true = "Powered by YaadBooks" on PDFs
+  gctExportEnabled: boolean;  // false = view only, no TAJ export
 }
 
 export const TIER_LIMITS: Record<Tier, TierLimits> = {
   free: {
     maxUsers: 1,
     maxCompanies: 1,
-    maxInvoicesPerMonth: 50,
-    maxPayrollEmployees: 0,  // No payroll
-    maxStorageMb: 500,
-    maxAiQuestionsPerMonth: 1,  // Taste only
+    maxInvoicesPerMonth: 10,      // Reduced from 50 - upgrade incentive
+    maxQuotationsPerMonth: 3,     // Limited quotations
+    maxCustomers: 15,             // Limited customer base
+    maxPayrollEmployees: 0,       // No payroll
+    maxStorageMb: 250,            // Reduced from 500
+    maxAiQuestionsPerMonth: 0,    // No AI - upgrade to unlock
     maxLocations: 1,
     includesModules: 0,
+    reportHistoryDays: 30,        // Last 30 days only
+    invoiceWatermark: true,       // "Powered by YaadBooks" on PDFs
+    gctExportEnabled: false,      // View only, no TAJ export
   },
   starter: {
     maxUsers: 3,
     maxCompanies: 1,
-    maxInvoicesPerMonth: 200,
+    maxInvoicesPerMonth: -1,      // Unlimited invoices
+    maxQuotationsPerMonth: -1,    // Unlimited quotations
+    maxCustomers: -1,             // Unlimited customers
     maxPayrollEmployees: 5,
-    maxStorageMb: 2048,  // 2GB
+    maxStorageMb: 2048,           // 2GB
     maxAiQuestionsPerMonth: 25,
     maxLocations: 1,
     includesModules: 0,
+    reportHistoryDays: -1,        // Full history
+    invoiceWatermark: false,      // Clean invoices
+    gctExportEnabled: true,       // Full GCT export
   },
   professional: {
-    maxUsers: -1,  // Unlimited
+    maxUsers: -1,                 // Unlimited
     maxCompanies: 1,
-    maxInvoicesPerMonth: -1,  // Unlimited
-    maxPayrollEmployees: -1,  // Unlimited
-    maxStorageMb: 10240,  // 10GB
+    maxInvoicesPerMonth: -1,      // Unlimited
+    maxQuotationsPerMonth: -1,    // Unlimited
+    maxCustomers: -1,             // Unlimited
+    maxPayrollEmployees: -1,      // Unlimited
+    maxStorageMb: 10240,          // 10GB
     maxAiQuestionsPerMonth: 500,
     maxLocations: 1,
     includesModules: 1,
+    reportHistoryDays: -1,        // Full history
+    invoiceWatermark: false,      // Clean invoices
+    gctExportEnabled: true,       // Full GCT export
   },
   business: {
     maxUsers: -1,
     maxCompanies: 3,
     maxInvoicesPerMonth: -1,
+    maxQuotationsPerMonth: -1,
+    maxCustomers: -1,
     maxPayrollEmployees: -1,
-    maxStorageMb: 51200,  // 50GB
-    maxAiQuestionsPerMonth: -1,  // Unlimited
+    maxStorageMb: 51200,          // 50GB
+    maxAiQuestionsPerMonth: -1,   // Unlimited
     maxLocations: 3,
-    includesModules: 1,  // 1 module with ALL sub-modules
+    includesModules: 1,           // 1 module with ALL sub-modules
+    reportHistoryDays: -1,        // Full history
+    invoiceWatermark: false,      // Clean invoices
+    gctExportEnabled: true,       // Full GCT export
   },
   enterprise: {
     maxUsers: -1,
     maxCompanies: -1,
     maxInvoicesPerMonth: -1,
+    maxQuotationsPerMonth: -1,
+    maxCustomers: -1,
     maxPayrollEmployees: -1,
-    maxStorageMb: -1,  // Unlimited
+    maxStorageMb: -1,             // Unlimited
     maxAiQuestionsPerMonth: -1,
     maxLocations: -1,
-    includesModules: -1,  // All modules
+    includesModules: -1,          // All modules
+    reportHistoryDays: -1,        // Full history
+    invoiceWatermark: false,      // Clean invoices
+    gctExportEnabled: true,       // Full GCT export
   },
 };
 

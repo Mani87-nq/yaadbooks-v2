@@ -43,9 +43,25 @@ const COMPANY_LIMITS: Record<SubscriptionTier, number> = {
 };
 
 const INVOICE_LIMITS: Record<SubscriptionTier, number> = {
-  free: 50,
-  starter: 200,
-  professional: -1,  // unlimited
+  free: 10,          // Reduced from 50 - upgrade incentive
+  starter: -1,       // Unlimited
+  professional: -1,  // Unlimited
+  business: -1,
+  enterprise: -1,
+};
+
+const QUOTATION_LIMITS: Record<SubscriptionTier, number> = {
+  free: 3,           // Limited quotations
+  starter: -1,       // Unlimited
+  professional: -1,
+  business: -1,
+  enterprise: -1,
+};
+
+const CUSTOMER_LIMITS: Record<SubscriptionTier, number> = {
+  free: 15,          // Limited customer base
+  starter: -1,       // Unlimited
+  professional: -1,
   business: -1,
   enterprise: -1,
 };
@@ -59,19 +75,27 @@ const PAYROLL_EMPLOYEE_LIMITS: Record<SubscriptionTier, number> = {
 };
 
 const STORAGE_LIMITS_MB: Record<SubscriptionTier, number> = {
-  free: 500,         // 500 MB
+  free: 250,         // Reduced from 500 MB - upgrade incentive
   starter: 2048,     // 2 GB
   professional: 10240,  // 10 GB
   business: 51200,   // 50 GB
-  enterprise: -1,    // unlimited
+  enterprise: -1,    // Unlimited
 };
 
 const AI_QUESTION_LIMITS: Record<SubscriptionTier, number> = {
-  free: 1,
+  free: 0,           // No AI - upgrade to unlock
   starter: 25,
   professional: 500,
-  business: -1,      // unlimited
+  business: -1,      // Unlimited
   enterprise: -1,
+};
+
+const STORAGE_LIMITS_MB_UPDATED: Record<SubscriptionTier, number> = {
+  free: 250,         // Reduced from 500 MB
+  starter: 2048,     // 2 GB
+  professional: 10240,  // 10 GB
+  business: 51200,   // 50 GB
+  enterprise: -1,    // Unlimited
 };
 
 // ─── Helper Functions ──────────────────────────────────────────────
@@ -400,6 +424,114 @@ export async function checkAILimit(
   return result;
 }
 
+// ─── Quotation Limit Check ─────────────────────────────────────────
+
+/**
+ * Check if a company can create more quotations this month.
+ * 
+ * Free tier: 3 quotations/month
+ * Starter+: Unlimited
+ * 
+ * @param companyId - The company to check
+ * @param tier - Override tier (if not provided, fetches from company)
+ * @returns LimitCheckResult with current quotation count and allowance
+ */
+export async function checkQuotationLimit(
+  companyId: string,
+  tier?: string
+): Promise<LimitCheckResult> {
+  // Get company data
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: {
+      subscriptionPlan: true,
+    },
+  });
+
+  if (!company) {
+    return {
+      allowed: false,
+      current: 0,
+      limit: 0,
+      remaining: 0,
+      tier: 'free',
+      message: 'Company not found',
+    };
+  }
+
+  // Count quotations this month
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const current = await prisma.quotation.count({
+    where: {
+      companyId,
+      createdAt: { gte: startOfMonth },
+    },
+  });
+
+  const normalizedTier = normalizeTier(tier ?? company.subscriptionPlan);
+  const limit = QUOTATION_LIMITS[normalizedTier];
+
+  const result = buildResult(current, limit, normalizedTier, 'Quotation');
+  if (!result.allowed) {
+    result.message = `Quotation limit reached (${current}/${limit} this month). Upgrade to Starter for unlimited quotations.`;
+  }
+
+  return result;
+}
+
+// ─── Customer Limit Check ──────────────────────────────────────────
+
+/**
+ * Check if a company can add more customers.
+ * 
+ * Free tier: 15 customers max
+ * Starter+: Unlimited
+ * 
+ * @param companyId - The company to check
+ * @param tier - Override tier (if not provided, fetches from company)
+ * @returns LimitCheckResult with current customer count and allowance
+ */
+export async function checkCustomerLimit(
+  companyId: string,
+  tier?: string
+): Promise<LimitCheckResult> {
+  // Get company data
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: {
+      subscriptionPlan: true,
+      _count: {
+        select: { customers: true },
+      },
+    },
+  });
+
+  if (!company) {
+    return {
+      allowed: false,
+      current: 0,
+      limit: 0,
+      remaining: 0,
+      tier: 'free',
+      message: 'Company not found',
+    };
+  }
+
+  const normalizedTier = normalizeTier(tier ?? company.subscriptionPlan);
+  const limit = CUSTOMER_LIMITS[normalizedTier];
+  const current = company._count.customers;
+
+  const result = buildResult(current, limit, normalizedTier, 'Customer');
+  if (!result.allowed) {
+    result.message = `Customer limit reached (${current}/${limit}). Upgrade to Starter for unlimited customers.`;
+  }
+
+  return result;
+}
+
 // ─── Bulk Check ────────────────────────────────────────────────────
 
 /**
@@ -409,19 +541,23 @@ export async function checkAILimit(
 export async function checkAllLimits(companyId: string): Promise<{
   users: LimitCheckResult;
   invoices: LimitCheckResult;
+  quotations: LimitCheckResult;
+  customers: LimitCheckResult;
   payroll: LimitCheckResult;
   storage: LimitCheckResult;
   ai: LimitCheckResult;
 }> {
-  const [users, invoices, payroll, storage, ai] = await Promise.all([
+  const [users, invoices, quotations, customers, payroll, storage, ai] = await Promise.all([
     checkUserLimit(companyId),
     checkInvoiceLimit(companyId),
+    checkQuotationLimit(companyId),
+    checkCustomerLimit(companyId),
     checkPayrollLimit(companyId),
     checkStorageLimit(companyId),
     checkAILimit(companyId),
   ]);
 
-  return { users, invoices, payroll, storage, ai };
+  return { users, invoices, quotations, customers, payroll, storage, ai };
 }
 
 // ─── Export Limit Constants (for UI display) ───────────────────────
