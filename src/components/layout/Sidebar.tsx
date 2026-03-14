@@ -329,7 +329,7 @@ export function Sidebar() {
         {/* Company Selector */}
         {sidebarOpen && activeCompany && (
           <div className="border-b border-gray-200 dark:border-white/[0.10] px-4 py-3">
-            <div className="text-[10px] text-gray-400 dark:text-gray-400 uppercase tracking-widest mb-0.5 font-medium">
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-0.5 font-medium">
               Company
             </div>
             <div className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">
