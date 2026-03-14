@@ -215,8 +215,13 @@ export function Header() {
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setShowUserDropdown(false)}
+                onTouchEnd={() => setShowUserDropdown(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+              <div 
+                className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20"
+                onClick={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
                 {/* User Info */}
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -228,21 +233,27 @@ export function Header() {
                 {/* Menu Items */}
                 <div className="py-1">
                   <button
-                    onClick={() => {
-                      setShowUserDropdown(false);
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       router.push('/profile');
+                      setShowUserDropdown(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
                   >
                     <UserIcon className="h-4 w-4" />
                     Your Profile
                   </button>
                   <button
-                    onClick={() => {
-                      setShowUserDropdown(false);
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       router.push('/settings');
+                      setShowUserDropdown(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
                   >
                     <Cog6ToothIcon className="h-4 w-4" />
                     Settings
@@ -252,9 +263,14 @@ export function Header() {
                 {/* Sign Out */}
                 <div className="border-t border-gray-100 dark:border-gray-700 py-1">
                   <button
-                    onClick={handleLogout}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleLogout();
+                    }}
                     disabled={loggingOut}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 disabled:opacity-50 touch-manipulation"
                   >
                     <ArrowRightOnRectangleIcon className="h-4 w-4" />
                     {loggingOut ? 'Signing out...' : 'Sign Out'}
