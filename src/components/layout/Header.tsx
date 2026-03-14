@@ -94,6 +94,7 @@ export function Header() {
         <button
           onClick={() => setSidebarOpen(true)}
           className="lg:hidden -ml-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label="Open navigation menu"
         >
           <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
         </button>
@@ -167,7 +168,7 @@ export function Header() {
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
               <SunIcon className="h-5 w-5 text-yellow-400" />
@@ -185,6 +186,9 @@ export function Header() {
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="User menu"
+            aria-expanded={showUserDropdown}
+            aria-haspopup="menu"
           >
             {user?.avatarUrl ? (
               <img

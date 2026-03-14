@@ -309,6 +309,7 @@ export function Sidebar() {
           <button
             onClick={toggleSidebar}
             className="hidden lg:flex items-center justify-center h-7 w-7 rounded-md text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? (
               <ChevronLeftIcon className="h-4 w-4" />
@@ -319,6 +320,7 @@ export function Sidebar() {
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden flex items-center justify-center h-7 w-7 rounded-md text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+            aria-label="Close navigation menu"
           >
             <XMarkIcon className="h-4 w-4" />
           </button>
