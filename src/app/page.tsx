@@ -1306,16 +1306,16 @@ export default async function LandingPage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Contact Us</h4>
               <ul className="space-y-2">
-                <li>📍 Kingston, Jamaica</li>
+                <li>📍 Middletown, CT, USA</li>
                 <li>📧 support@yaadbooks.com</li>
-                <li>📞 <a href="tel:+18766139119" className="hover:text-white">876-613-9119</a></li>
+                <li>📞 <a href="tel:+18766139119" className="hover:text-white">876-613-9119</a> (Jamaica)</li>
               </ul>
             </div>
           </div>
 
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm">
-              © 2026 YaadBooks. Made with ❤️ in Jamaica.
+              © 2026 YaadBooks. Built for Jamaica 🇯🇲 by the diaspora.
             </div>
             <div className="flex gap-6 text-sm">
               <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>

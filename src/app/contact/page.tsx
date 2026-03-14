@@ -240,8 +240,9 @@ export default function ContactPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-emerald-200 text-sm font-medium">Office</p>
-                      <p className="text-white">Kingston, Jamaica</p>
+                      <p className="text-emerald-200 text-sm font-medium">Headquarters</p>
+                      <p className="text-white">515 Centerpoint Drive, Suite #212</p>
+                      <p className="text-emerald-200 text-sm">Middletown, CT 06457, USA</p>
                     </div>
                   </div>
 
@@ -253,9 +254,9 @@ export default function ContactPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-emerald-200 text-sm font-medium">Business Hours</p>
-                      <p className="text-white">Mon-Fri: 8:00 AM - 6:00 PM</p>
-                      <p className="text-emerald-200 text-sm">Sat: 9:00 AM - 1:00 PM</p>
+                      <p className="text-emerald-200 text-sm font-medium">Business Hours (Jamaica Time)</p>
+                      <p className="text-white">Mon-Fri: 9:00 AM - 5:00 PM EST</p>
+                      <p className="text-emerald-200 text-sm">Jamaica support via local number</p>
                     </div>
                   </div>
                 </div>
@@ -506,7 +507,7 @@ export default function ContactPage() {
                 <span className="text-xl font-bold text-white">YaadBooks</span>
               </div>
               <p className="text-gray-500 mb-4">
-                Jamaica&apos;s complete business management solution. Built by Jamaicans, for Jamaicans.
+                Jamaica&apos;s complete business management solution. Built for Jamaica by the diaspora.
               </p>
               <div className="flex gap-4">
                 <a href="https://twitter.com/yaadbooks" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
@@ -548,7 +549,7 @@ export default function ContactPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Kingston, Jamaica
+                  Middletown, CT, USA
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -568,7 +569,7 @@ export default function ContactPage() {
 
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm">
-              &copy; {new Date().getFullYear()} YaadBooks. Made with love in Jamaica.
+              &copy; {new Date().getFullYear()} YaadBooks. Built for Jamaica 🇯🇲 by the diaspora.
             </div>
             <div className="flex gap-6 text-sm">
               <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>

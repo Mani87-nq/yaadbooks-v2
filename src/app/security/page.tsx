@@ -474,7 +474,7 @@ export default function SecurityPage() {
       <footer className="bg-gray-900 text-gray-400 py-8 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-sm">
-            © 2026 YaadBooks. Made with ❤️ in Jamaica.
+            © 2026 YaadBooks. Built for Jamaica 🇯🇲 by the diaspora.
           </div>
           <div className="flex gap-6 text-sm">
             <Link href="/security" className="hover:text-white text-white">Security</Link>

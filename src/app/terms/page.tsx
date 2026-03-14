@@ -282,11 +282,12 @@ export default function TermsOfServicePage() {
                 For questions about these Terms of Service, please contact us:
               </p>
               <div className="bg-gray-50 rounded-xl p-6">
-                <p className="text-gray-900 font-semibold">YaadBooks Limited</p>
-                <p className="text-gray-600">Kingston, Jamaica</p>
+                <p className="text-gray-900 font-semibold">DolphyTech (Operating as YaadBooks)</p>
+                <p className="text-gray-600">515 Centerpoint Drive, Suite #212</p>
+                <p className="text-gray-600">Middletown, CT 06457, USA</p>
                 <p className="text-gray-600">Email: legal@yaadbooks.com</p>
                 <p className="text-gray-600">Support: support@yaadbooks.com</p>
-                <p className="text-gray-600">Phone: <a href="tel:+18766139119" className="text-emerald-600 hover:text-emerald-700">876-613-9119</a></p>
+                <p className="text-gray-600">Jamaica Support: <a href="tel:+18766139119" className="text-emerald-600 hover:text-emerald-700">876-613-9119</a></p>
               </div>
             </section>
           </div>
@@ -303,7 +304,7 @@ export default function TermsOfServicePage() {
       <footer className="bg-gray-900 text-gray-400 py-8 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-sm">
-            © 2026 YaadBooks. Made with ❤️ in Jamaica.
+            © 2026 YaadBooks. Built for Jamaica 🇯🇲 by the diaspora.
           </div>
           <div className="flex gap-6 text-sm">
             <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
