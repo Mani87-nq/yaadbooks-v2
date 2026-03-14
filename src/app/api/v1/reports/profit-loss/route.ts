@@ -272,6 +272,7 @@ async function calculateBreakdown(
 
 /**
  * Generate time periods for breakdown view
+ * Uses UTC methods to avoid timezone issues
  */
 function generatePeriods(
   startDate: Date,
@@ -282,30 +283,42 @@ function generatePeriods(
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-  const current = new Date(startDate);
+  // Use UTC values to avoid timezone issues
+  let currentYear = startDate.getUTCFullYear();
+  let currentMonth = startDate.getUTCMonth();
+  const endYear = endDate.getUTCFullYear();
+  const endMonth = endDate.getUTCMonth();
   
-  while (current <= endDate) {
+  while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
     let periodStart: Date;
     let periodEnd: Date;
     let label: string;
 
     if (view === 'monthly') {
-      periodStart = new Date(current.getFullYear(), current.getMonth(), 1);
-      periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
-      label = `${monthNames[current.getMonth()]} ${current.getFullYear()}`;
-      current.setMonth(current.getMonth() + 1);
+      periodStart = new Date(Date.UTC(currentYear, currentMonth, 1));
+      periodEnd = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+      label = `${monthNames[currentMonth]} ${currentYear}`;
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
     } else if (view === 'quarterly') {
-      const quarter = Math.floor(current.getMonth() / 3);
-      periodStart = new Date(current.getFullYear(), quarter * 3, 1);
-      periodEnd = new Date(current.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59, 999);
-      label = `${quarterNames[quarter]} ${current.getFullYear()}`;
-      current.setMonth(quarter * 3 + 3);
+      const quarter = Math.floor(currentMonth / 3);
+      periodStart = new Date(Date.UTC(currentYear, quarter * 3, 1));
+      periodEnd = new Date(Date.UTC(currentYear, quarter * 3 + 3, 0, 23, 59, 59, 999));
+      label = `${quarterNames[quarter]} ${currentYear}`;
+      currentMonth = quarter * 3 + 3;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
     } else {
       // yearly
-      periodStart = new Date(current.getFullYear(), 0, 1);
-      periodEnd = new Date(current.getFullYear(), 11, 31, 23, 59, 59, 999);
-      label = `${current.getFullYear()}`;
-      current.setFullYear(current.getFullYear() + 1);
+      periodStart = new Date(Date.UTC(currentYear, 0, 1));
+      periodEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999));
+      label = `${currentYear}`;
+      currentYear++;
     }
 
     // Clamp to actual date range
@@ -316,9 +329,6 @@ function generatePeriods(
     if (periodStart <= periodEnd) {
       periods.push({ start: periodStart, end: periodEnd, label });
     }
-
-    // Prevent infinite loop
-    if (current > endDate) break;
   }
 
   return periods;

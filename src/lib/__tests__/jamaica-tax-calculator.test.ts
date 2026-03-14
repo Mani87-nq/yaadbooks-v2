@@ -1,9 +1,10 @@
 /**
  * Tests for Jamaica Payroll Tax Calculator
  * 
- * Run with: npx jest src/lib/__tests__/jamaica-tax-calculator.test.ts
+ * Run with: npm test
  */
 
+import { describe, it, expect } from 'vitest';
 import {
   calculatePayrollTaxes,
   calculateAnnualPAYE,
@@ -282,6 +283,156 @@ describe('Jamaica Payroll Tax Calculator', () => {
       
       // Net pay = 200,000 - 18,748 - 6,000 - 4,000 - 4,500 = 166,752
       expect(result.netPay).toBeCloseTo(166752, 0);
+    });
+
+    it('should match known good calculation (J$150,000 monthly) - TASK SPEC', () => {
+      // From task specification:
+      // Monthly salary: J$150,000
+      // Expected calculations:
+      // - Annual: J$1,800,000
+      // - Taxable: J$1,800,000 - J$1,500,096 = J$299,904
+      // - Annual PAYE: J$299,904 × 25% = J$74,976
+      // - Monthly PAYE: J$74,976 / 12 = J$6,248
+      // - NIS: 3% of J$150,000 = J$4,500 (below max J$13,000)
+      // - NHT: 2% of J$150,000 = J$3,000
+      // - Ed Tax: 2.25% of J$150,000 = J$3,375
+      // - Total deductions: ~J$17,123
+      // - Net pay: ~J$132,877
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 150000,
+        payPeriod: 'MONTHLY',
+      });
+
+      // Verify annualized figures
+      expect(result.breakdown.annualisedGross).toBe(1800000);
+      
+      // Verify PAYE (main tax)
+      expect(result.paye).toBeCloseTo(6248, 0);
+      
+      // Verify statutory deductions
+      expect(result.nis).toBe(4500);
+      expect(result.nht).toBe(3000);
+      expect(result.educationTax).toBe(3375);
+      
+      // Verify totals
+      expect(result.totalDeductions).toBeCloseTo(17123, 0);
+      expect(result.netPay).toBeCloseTo(132877, 0);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle salary exactly at threshold (no PAYE)', () => {
+      // J$1,500,096 / 12 = J$125,008
+      const result = calculatePayrollTaxes({
+        grossSalary: 125008,
+        payPeriod: 'MONTHLY',
+      });
+
+      expect(result.paye).toBe(0);
+      expect(result.nis).toBe(3750.24); // 3% of 125,008
+      expect(result.nht).toBe(2500.16); // 2% of 125,008
+    });
+
+    it('should apply 30% rate for income above J$6M annually', () => {
+      // J$600,000 monthly = J$7,200,000 annually
+      // First band: (J$6M - J$1,500,096) × 25% = J$1,124,976
+      // Second band: (J$7.2M - J$6M) × 30% = J$360,000
+      // Annual PAYE: J$1,484,976
+      // Monthly PAYE: J$123,748
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 600000,
+        payPeriod: 'MONTHLY',
+      });
+
+      expect(result.breakdown.annualisedGross).toBe(7200000);
+      expect(result.paye).toBeCloseTo(123748, 0);
+      // NIS should be capped at J$13,000
+      expect(result.nis).toBe(13000);
+      expect(result.breakdown.nisMaxApplied).toBe(true);
+    });
+
+    it('should handle weekly salary correctly', () => {
+      // J$40,000 weekly
+      // Annual: J$2,080,000
+      // Taxable: J$2,080,000 - J$1,500,096 = J$579,904
+      // Annual PAYE: J$579,904 × 25% = J$144,976
+      // Weekly PAYE: J$144,976 / 52 = J$2,788
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 40000,
+        payPeriod: 'WEEKLY',
+      });
+
+      expect(result.breakdown.periodsPerYear).toBe(52);
+      expect(result.paye).toBeCloseTo(2788, 0);
+      // NIS weekly max is J$3,000
+      // 3% of 40,000 = 1,200 (below max)
+      expect(result.nis).toBe(1200);
+    });
+
+    it('should handle bi-weekly salary correctly', () => {
+      // J$75,000 bi-weekly
+      // Annual: J$1,950,000
+      // Taxable: J$1,950,000 - J$1,500,096 = J$449,904
+      // Annual PAYE: J$449,904 × 25% = J$112,476
+      // Bi-weekly PAYE: J$112,476 / 26 = J$4,326
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 75000,
+        payPeriod: 'BIWEEKLY',
+      });
+
+      expect(result.breakdown.periodsPerYear).toBe(26);
+      expect(result.paye).toBeCloseTo(4326, 0);
+      // NIS bi-weekly max is J$6,000
+      // 3% of 75,000 = 2,250 (below max)
+      expect(result.nis).toBe(2250);
+    });
+
+    it('should cap NIS at weekly maximum', () => {
+      // J$150,000 weekly (very high weekly salary)
+      // NIS: 3% = J$4,500, but max weekly is J$3,000
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 150000,
+        payPeriod: 'WEEKLY',
+      });
+
+      expect(result.nis).toBe(3000);
+      expect(result.breakdown.nisMaxApplied).toBe(true);
+    });
+
+    it('should cap NIS at bi-weekly maximum', () => {
+      // J$250,000 bi-weekly
+      // NIS: 3% = J$7,500, but max bi-weekly is J$6,000
+      
+      const result = calculatePayrollTaxes({
+        grossSalary: 250000,
+        payPeriod: 'BIWEEKLY',
+      });
+
+      expect(result.nis).toBe(6000);
+      expect(result.breakdown.nisMaxApplied).toBe(true);
+    });
+
+    it('should calculate employer contributions correctly', () => {
+      const result = calculatePayrollTaxes({
+        grossSalary: 200000,
+        payPeriod: 'MONTHLY',
+      });
+
+      // Employer NIS: same as employee (3%)
+      expect(result.employerNis).toBe(6000);
+      // Employer NHT: 3%
+      expect(result.employerNht).toBe(6000);
+      // Employer Education Tax: 3.5%
+      expect(result.employerEducationTax).toBe(7000);
+      // HEART: 3%
+      expect(result.heartContribution).toBe(6000);
+      // Total: 6000 + 6000 + 7000 + 6000 = 25,000
+      expect(result.totalEmployerContributions).toBe(25000);
     });
   });
 });

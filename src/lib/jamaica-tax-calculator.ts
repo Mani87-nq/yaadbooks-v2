@@ -172,6 +172,7 @@ export interface PayrollTaxResult {
     annualisedGross: number;
     annualisedPaye: number;
     nisMaxApplied: boolean;
+    taxBand: 'EXEMPT' | 'STANDARD' | 'HIGHER' | 'MIXED';
   };
 }
 
@@ -275,6 +276,7 @@ export function calculatePayrollTaxes(input: PayrollTaxInput): PayrollTaxResult 
       annualisedGross: payeResult.annualisedGross,
       annualisedPaye: payeResult.annualisedPaye,
       nisMaxApplied: nisResult.maxApplied,
+      taxBand: payeResult.taxBand,
     },
   };
 }

@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, error: authError } = await requirePermission(request, 'payroll:write');
+    const { user, error: authError } = await requirePermission(request, 'payroll:create');
     if (authError) return authError;
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
           totalDeductions: new Decimal(runTotalDeductions.toFixed(2)),
           totalNet: new Decimal(runTotalNet.toFixed(2)),
           totalEmployerContributions: new Decimal(runTotalEmployerContributions.toFixed(2)),
-          createdBy: user!.id,
+          createdBy: user!.sub,
         },
       });
 

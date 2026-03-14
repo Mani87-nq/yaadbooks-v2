@@ -103,7 +103,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { runId } = await context.params;
 
-    const { user, error: authError } = await requirePermission(request, 'payroll:write');
+    const { user, error: authError } = await requirePermission(request, 'payroll:create');
     if (authError) return authError;
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
@@ -209,7 +209,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       updateData.status = body.status;
       
       if (body.status === 'APPROVED') {
-        updateData.approvedBy = user!.id;
+        updateData.approvedBy = user!.sub;
         updateData.approvedAt = new Date();
       }
     }
@@ -271,7 +271,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const { runId } = await context.params;
 
-    const { user, error: authError } = await requirePermission(request, 'payroll:write');
+    const { user, error: authError } = await requirePermission(request, 'payroll:create');
     if (authError) return authError;
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
