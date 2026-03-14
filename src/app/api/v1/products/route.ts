@@ -10,6 +10,7 @@ import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
 import { withFeatureCheck } from '@/lib/tier';
+import { sanitizeInput } from '@/lib/sanitize';
 
 async function _GET(request: NextRequest) {
   try {
@@ -79,7 +80,9 @@ async function _POST(request: NextRequest) {
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
 
-    const body = await request.json();
+    const rawBody = await request.json();
+    // Sanitize all string inputs to prevent XSS
+    const body = sanitizeInput(rawBody);
     const parsed = createProductSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};

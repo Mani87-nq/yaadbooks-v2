@@ -18,6 +18,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken, REFRESH_TOKEN_COOKIE } from '@/lib/auth/jwt';
+import { apiLimiter, getClientIP } from '@/lib/rate-limit';
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -105,6 +106,35 @@ export async function middleware(request: NextRequest) {
   // Any modification — even adding response headers — breaks navigation in Next.js 16.
   if (isRSC) {
     return NextResponse.next();
+  }
+
+  // ============================================
+  // GLOBAL API RATE LIMITING
+  // ============================================
+  // Apply rate limiting to all /api/v1/ routes (60 requests per minute per IP)
+  // Auth routes have stricter limits handled in their own handlers (5/min)
+  if (pathname.startsWith('/api/v1/')) {
+    const ip = getClientIP(request);
+    const limitResult = apiLimiter.check(ip);
+    
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        {
+          type: 'rate_limit',
+          title: 'Too many requests',
+          status: 429,
+          detail: 'Rate limit exceeded. Please slow down.',
+          retryAfter: Math.ceil((limitResult.resetAt - Date.now()) / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(Math.ceil((limitResult.resetAt - Date.now()) / 1000)),
+            ...apiLimiter.headers(limitResult),
+          },
+        }
+      );
+    }
   }
 
   // ============================================

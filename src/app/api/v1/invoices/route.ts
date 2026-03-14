@@ -10,6 +10,7 @@ import { badRequest, internalError } from '@/lib/api-error';
 import { postInvoiceCreated } from '@/lib/accounting/engine';
 import { createNotification } from '@/lib/notification-service';
 import { auditInvoice } from '@/lib/audit';
+import { sanitizeInput } from '@/lib/sanitize';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,31 +65,90 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// GCT (General Consumption Tax) rates for Jamaica
+const GCT_RATES: Record<string, number> = {
+  STANDARD: 0.15,    // 15% standard rate
+  TELECOM: 0.25,     // 25% telecom services
+  TOURISM: 0.10,     // 10% tourism
+  ZERO_RATED: 0,     // 0% zero-rated
+  EXEMPT: 0,         // Exempt items
+};
+
 const invoiceItemSchema = z.object({
   productId: z.string().optional(),
   description: z.string().min(1).max(500),
   quantity: z.number().positive(),
   unitPrice: z.number().min(0),
   gctRate: z.enum(['STANDARD', 'TELECOM', 'TOURISM', 'ZERO_RATED', 'EXEMPT']).default('STANDARD'),
-  gctAmount: z.number().min(0),
-  total: z.number().min(0),
+  // Made optional - server will calculate if not provided
+  gctAmount: z.number().min(0).optional(),
+  total: z.number().min(0).optional(),
 });
 
 const createInvoiceSchema = z.object({
   customerId: z.string().min(1),
   invoiceNumber: z.string().max(50).optional(),
   items: z.array(invoiceItemSchema).min(1),
-  subtotal: z.number().min(0),
-  gctAmount: z.number().min(0),
+  // Made optional - server will calculate if not provided
+  subtotal: z.number().min(0).optional(),
+  gctAmount: z.number().min(0).optional(),
   discount: z.number().min(0).default(0),
   discountType: z.enum(['FIXED', 'PERCENTAGE']).default('FIXED'),
-  total: z.number().min(0),
+  total: z.number().min(0).optional(),
   dueDate: z.coerce.date(),
-  issueDate: z.coerce.date(),
+  issueDate: z.coerce.date().optional(),
   notes: z.string().max(2000).optional(),
   terms: z.string().max(2000).optional(),
   status: z.enum(['DRAFT', 'SENT']).default('DRAFT'),
 });
+
+/**
+ * Calculate invoice totals server-side
+ * This ensures financial integrity regardless of client calculations
+ */
+function calculateInvoiceTotals(
+  items: z.infer<typeof invoiceItemSchema>[],
+  discount: number,
+  discountType: 'FIXED' | 'PERCENTAGE'
+) {
+  let subtotal = 0;
+  let totalGct = 0;
+
+  const processedItems = items.map(item => {
+    const lineSubtotal = item.quantity * item.unitPrice;
+    const gctRate = GCT_RATES[item.gctRate] || 0;
+    const lineGct = Math.round(lineSubtotal * gctRate * 100) / 100; // Round to 2 decimals
+    const lineTotal = Math.round((lineSubtotal + lineGct) * 100) / 100;
+
+    subtotal += lineSubtotal;
+    totalGct += lineGct;
+
+    return {
+      ...item,
+      gctAmount: lineGct,
+      total: lineTotal,
+    };
+  });
+
+  // Round subtotal
+  subtotal = Math.round(subtotal * 100) / 100;
+  totalGct = Math.round(totalGct * 100) / 100;
+
+  // Calculate discount
+  const discountAmount = discountType === 'PERCENTAGE'
+    ? Math.round(subtotal * (discount / 100) * 100) / 100
+    : discount;
+
+  // Final total
+  const total = Math.round((subtotal + totalGct - discountAmount) * 100) / 100;
+
+  return {
+    processedItems,
+    subtotal,
+    gctAmount: totalGct,
+    total,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,7 +157,9 @@ export async function POST(request: NextRequest) {
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
 
-    const body = await request.json();
+    const rawBody = await request.json();
+    // Sanitize all string inputs to prevent XSS
+    const body = sanitizeInput(rawBody);
     const parsed = createInvoiceSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};
@@ -111,20 +173,36 @@ export async function POST(request: NextRequest) {
 
     const { items, ...invoiceData } = parsed.data;
 
+    // Server-side calculation of totals (ensures financial integrity)
+    const calculated = calculateInvoiceTotals(
+      items,
+      invoiceData.discount,
+      invoiceData.discountType
+    );
+
     // Generate invoice number if not provided
     const invoiceNumber = invoiceData.invoiceNumber ?? await generateInvoiceNumber(companyId!);
+
+    // Use calculated values, overriding any client-provided values
+    const finalInvoiceData = {
+      ...invoiceData,
+      subtotal: calculated.subtotal,
+      gctAmount: calculated.gctAmount,
+      total: calculated.total,
+      issueDate: invoiceData.issueDate ?? new Date(),
+    };
 
     // Use a transaction so invoice + journal entry are atomic
     const invoice = await prisma.$transaction(async (tx: any) => {
       const inv = await tx.invoice.create({
         data: {
-          ...invoiceData,
+          ...finalInvoiceData,
           invoiceNumber,
           companyId: companyId!,
-          balance: invoiceData.total,
+          balance: calculated.total,
           createdBy: user!.sub,
           items: {
-            create: items.map((item: any) => ({
+            create: calculated.processedItems.map((item: any) => ({
               ...item,
               productId: item.productId || null,
             })),
