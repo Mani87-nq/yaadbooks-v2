@@ -226,20 +226,20 @@ YaadBooks`);
                   <TableCell>
                     <div className="flex gap-1">
                       <Link href={`/invoices/${invoice.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <EyeIcon className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" aria-label="View invoice">
+                          <EyeIcon className="w-4 h-4" aria-hidden="true" />
                         </Button>
                       </Link>
                       <PermissionGate permission="invoices:update">
                         <Link href={`/invoices/${invoice.id}/edit`}>
-                          <Button variant="ghost" size="sm">
-                            <PencilIcon className="w-4 h-4" />
+                          <Button variant="ghost" size="sm" aria-label="Edit invoice">
+                            <PencilIcon className="w-4 h-4" aria-hidden="true" />
                           </Button>
                         </Link>
                       </PermissionGate>
                       <PermissionGate permission="invoices:update">
-                        <Button variant="ghost" size="sm" title="Send" onClick={() => handleOpenEmailModal(invoice)}>
-                          <EnvelopeIcon className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" aria-label="Send invoice by email" onClick={() => handleOpenEmailModal(invoice)}>
+                          <EnvelopeIcon className="w-4 h-4" aria-hidden="true" />
                         </Button>
                       </PermissionGate>
                     </div>

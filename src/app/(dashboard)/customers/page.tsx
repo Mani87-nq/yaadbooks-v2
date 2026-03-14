@@ -312,13 +312,13 @@ export default function CustomersPage() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Link href={`/customers/${customer.id}`}>
-                        <Button variant="ghost" size="sm" title="View Details">
-                          <EyeIcon className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" aria-label="View customer details">
+                          <EyeIcon className="w-4 h-4" aria-hidden="true" />
                         </Button>
                       </Link>
                       <PermissionGate permission="customers:update">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenModal(customer)}>
-                          <PencilIcon className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenModal(customer)} aria-label="Edit customer">
+                          <PencilIcon className="w-4 h-4" aria-hidden="true" />
                         </Button>
                       </PermissionGate>
                       <PermissionGate permission="customers:delete">
@@ -327,8 +327,9 @@ export default function CustomersPage() {
                           size="sm"
                           onClick={() => handleDelete(customer.id)}
                           disabled={deleteCustomer.isPending}
+                          aria-label="Delete customer"
                         >
-                          <TrashIcon className="w-4 h-4 text-red-500" />
+                          <TrashIcon className="w-4 h-4 text-red-500" aria-hidden="true" />
                         </Button>
                       </PermissionGate>
                     </div>
