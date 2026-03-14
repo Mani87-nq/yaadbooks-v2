@@ -70,6 +70,7 @@ export function Header() {
 
   const handleLogout = async () => {
     setLoggingOut(true);
+    setShowUserDropdown(false);
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -82,8 +83,9 @@ export function Header() {
       // ALWAYS clear token and redirect — don't leave user stuck on dashboard
       // Even if logout API fails, clear local state and send to login
       setAccessToken(null);
-      router.push('/login');
-      router.refresh();
+      // Use hard redirect to clear ALL client state (Zustand, React Query cache, etc.)
+      // router.push() is soft navigation and doesn't clear client-side state
+      window.location.href = '/login';
     }
   };
 
@@ -231,31 +233,33 @@ export function Header() {
                 </div>
 
                 {/* Menu Items */}
-                <div className="py-1">
+                <div className="py-1" role="menu">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      router.push('/profile');
+                    role="menuitem"
+                    onClick={() => {
+                      // Close dropdown first, then navigate
+                      // Using hard navigation to avoid soft-nav race conditions
                       setShowUserDropdown(false);
+                      window.location.href = '/profile';
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation cursor-pointer"
                   >
-                    <UserIcon className="h-4 w-4" />
+                    <UserIcon className="h-4 w-4" aria-hidden="true" />
                     Your Profile
                   </button>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      router.push('/settings');
+                    role="menuitem"
+                    onClick={() => {
+                      // Close dropdown first, then navigate
+                      // Using hard navigation to avoid soft-nav race conditions
                       setShowUserDropdown(false);
+                      window.location.href = '/settings';
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation cursor-pointer"
                   >
-                    <Cog6ToothIcon className="h-4 w-4" />
+                    <Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />
                     Settings
                   </button>
                 </div>
@@ -264,15 +268,12 @@ export function Header() {
                 <div className="border-t border-gray-100 dark:border-gray-700 py-1">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleLogout();
-                    }}
+                    role="menuitem"
+                    onClick={() => handleLogout()}
                     disabled={loggingOut}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 disabled:opacity-50 touch-manipulation"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 disabled:opacity-50 touch-manipulation cursor-pointer"
                   >
-                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
                     {loggingOut ? 'Signing out...' : 'Sign Out'}
                   </button>
                 </div>
