@@ -14,6 +14,7 @@ import {
   CheckIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 
 export function Header() {
@@ -23,9 +24,20 @@ export function Header() {
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect even if logout API fails
+    } finally {
+      // ALWAYS redirect - don't leave user stuck on dashboard
+      router.push('/login');
+      router.refresh();
+    }
   };
 
   return (
@@ -152,24 +164,40 @@ export function Header() {
                   <div className="text-xs text-gray-500">{user?.email}</div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    router.push('/settings');
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <Cog6ToothIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-700">Settings</span>
-                </button>
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      router.push('/profile');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <UserIcon className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-700">Your Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      router.push('/settings');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <Cog6ToothIcon className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-700">Settings</span>
+                  </button>
+                </div>
 
                 <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left"
+                    disabled={isLoggingOut}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
                   >
                     <ArrowRightOnRectangleIcon className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-red-600">Sign Out</span>
+                    <span className="text-sm text-red-600">
+                      {isLoggingOut ? 'Signing out...' : 'Sign Out'}
+                    </span>
                   </button>
                 </div>
               </div>
