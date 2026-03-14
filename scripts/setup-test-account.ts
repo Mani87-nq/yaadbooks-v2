@@ -10,7 +10,7 @@
  * - Automated QA
  */
 
-import { PrismaClient, UserRole, SubscriptionTier } from '@prisma/client';
+import { PrismaClient, UserRole, SubscriptionPlan } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -77,7 +77,7 @@ async function main() {
         industry: TEST_COMPANY.industry,
         country: TEST_COMPANY.country,
         currency: TEST_COMPANY.currency,
-        subscriptionTier: SubscriptionTier.ENTERPRISE,
+        subscriptionPlan: SubscriptionPlan.ENTERPRISE,
         subscriptionStatus: 'ACTIVE',
         billingEmail: TEST_ACCOUNT.email,
       },
