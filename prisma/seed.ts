@@ -15,7 +15,8 @@ import pg from 'pg';
 
 const connectionString = process.env.DATABASE_URL ?? 'postgresql://dolphy@localhost:5432/yaadbooks?schema=public';
 const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+// Cast to any to avoid @types/pg version mismatch with @prisma/adapter-pg bundled types
+const adapter = new PrismaPg(pool as any);
 const prisma = new PrismaClient({ adapter });
 
 // ─── Chart of Accounts (Jamaica Standard) ──────────────────────────
