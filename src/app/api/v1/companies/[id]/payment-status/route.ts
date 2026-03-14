@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/companies/[companyId]/payment-status
+ * GET /api/v1/companies/[id]/payment-status
  * 
  * Returns payment failure status for the PaymentWarningBanner component.
  * Requires authentication.
@@ -11,7 +11,7 @@ import prisma from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ companyId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Extract and verify access token
@@ -32,12 +32,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { companyId } = await params;
+    const { id } = await params;
 
     // Verify user has access to this company
     const membership = await prisma.companyMember.findFirst({
       where: {
-        companyId,
+        id,
         userId: payload.sub,
       },
     });
@@ -47,7 +47,7 @@ export async function GET(
     }
 
     const company = await prisma.company.findUnique({
-      where: { id: companyId },
+      where: { id: id },
       select: {
         paymentFailedAt: true,
         gracePeriodNotified: true,
