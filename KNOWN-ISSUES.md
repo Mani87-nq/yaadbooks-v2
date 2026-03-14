@@ -13,17 +13,26 @@
 
 ## Medium Priority
 
-### 1. Stripe Webhook Handlers Are Stub Implementations
-**File:** `src/app/api/webhooks/stripe/route.ts`
-**Description:** The Stripe webhook correctly verifies signatures, but the event handlers only log to console. They contain TODO comments for actual database updates (subscription status, payment recording, etc.).
-**Impact:** Stripe payments will process, but subscription status won't auto-update in the database.
-**Recommendation:** Implement the TODO blocks before going live with paid subscriptions.
+### 1. ~~Stripe Webhook Handlers Are Stub Implementations~~ ✅ RESOLVED
+**File:** `src/app/api/billing/webhook/route.ts`
+**Status:** FULLY IMPLEMENTED (as of 2026-02-23)
+**What's Working:**
+- `checkout.session.completed` - Updates company plan and subscription
+- `customer.subscription.updated` - Syncs status and period end
+- `customer.subscription.deleted` - Cancels subscription, resets to FREE
+- `invoice.payment_failed` - Sets PAST_DUE status
+- Idempotency tracking via webhookEvent table
+- HMAC signature verification with timing-safe comparison
 
-### 2. Store-Driven Pages Don't Persist Across Sessions
-**Pages:** Dashboard, Reports, Banking, Accounting (Chart of Accounts, Journal Entries), AI Assistant
-**Description:** These pages use Zustand store data which is populated during the session. Data is lost on page refresh unless the store has persistence configured. The data hydration hook fetches some data from API, but banking/accounting data appears to be local-only.
-**Impact:** Users may lose in-session banking and accounting data on refresh.
-**Recommendation:** Migrate banking and accounting pages to use React Query hooks backed by API endpoints (like the POS and Customers pages already do).
+### 2. ~~Store-Driven Pages Don't Persist Across Sessions~~ ✅ MOSTLY RESOLVED
+**Pages:** Dashboard, Reports, Banking, Accounting (Chart of Accounts, Journal Entries)
+**Status:** FULLY IMPLEMENTED with React Query + API
+**What's Working:**
+- Banking: `useBankAccounts`, `useBankTransactions` → `/api/v1/bank-accounts`
+- Chart of Accounts: `useAccounts` → `/api/v1/accounts`
+- Journal Entries: `useJournalEntries` → `/api/v1/journal-entries`
+- Dashboard: `useDashboardStats` → `/api/v1/stats`
+**Note:** AI Assistant still uses local rule-based logic (see #3 below).
 
 ### 3. AI Assistant Uses Rule-Based Logic, Not Actual AI
 **File:** `src/app/(dashboard)/ai/page.tsx`
