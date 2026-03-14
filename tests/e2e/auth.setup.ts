@@ -15,18 +15,18 @@ setup('authenticate', async ({ page }) => {
   // Navigate to login
   await page.goto('/login');
   
-  // Fill login form
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
+  // Fill login form (using placeholders since labels may not be properly associated)
+  await page.getByPlaceholder('you@example.com').fill(email);
+  await page.getByPlaceholder('Enter your password').fill(password);
   
-  // Submit
-  await page.getByRole('button', { name: /sign in|log in/i }).click();
+  // Submit (use exact match to avoid matching "Sign in with Google")
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   
   // Wait for redirect to dashboard
   await page.waitForURL('**/dashboard**', { timeout: 30000 });
   
-  // Verify we're logged in
-  await expect(page.getByText(/dashboard|welcome/i)).toBeVisible();
+  // Verify we're logged in (use heading to be specific)
+  await expect(page.getByRole('heading', { name: /welcome/i })).toBeVisible();
   
   // Save authentication state
   await page.context().storageState({ path: authFile });

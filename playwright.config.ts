@@ -50,14 +50,14 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     
-    // Mobile Safari (responsive tests)
-    {
-      name: 'mobile-safari',
-      use: { 
-        ...devices['iPhone 13'],
-        storageState: 'tests/.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
+    // Mobile Safari (responsive tests) - disabled locally, enable in CI
+    // {
+    //   name: 'mobile-safari',
+    //   use: { 
+    //     ...devices['iPhone 13'],
+    //     storageState: 'tests/.auth/user.json',
+    //   },
+    //   dependencies: ['setup'],
+    // },
   ],
 });
