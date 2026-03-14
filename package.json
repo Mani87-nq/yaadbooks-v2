@@ -13,7 +13,15 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:smoke": "playwright test smoke.spec.ts",
+    "test:e2e:security": "playwright test security.spec.ts",
+    "test:e2e:accessibility": "playwright test accessibility.spec.ts",
+    "test:e2e:visual": "playwright test visual.spec.ts",
+    "test:e2e:api": "playwright test api.spec.ts",
     "test:e2e:report": "playwright show-report",
+    "test:e2e:update-snapshots": "playwright test visual.spec.ts --update-snapshots",
+    "test:load": "k6 run tests/load/load-test.js",
+    "test:load:smoke": "k6 run --vus 1 --duration 30s tests/load/load-test.js",
+    "test:all": "npm run test:e2e:smoke && npm run test:e2e:security && npm run test:e2e:api",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -48,6 +56,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
