@@ -192,12 +192,12 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
             <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900">500+</p>
-              <p className="text-sm text-gray-500">Jamaican Businesses</p>
+              <p className="text-3xl font-bold text-gray-900">🇯🇲</p>
+              <p className="text-sm text-gray-500">Built for Jamaica</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900">J$50M+</p>
-              <p className="text-sm text-gray-500">Processed Monthly</p>
+              <p className="text-3xl font-bold text-gray-900">GCT</p>
+              <p className="text-sm text-gray-500">Auto-Calculated</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold text-gray-900">100%</p>
@@ -1253,7 +1253,7 @@ export default async function LandingPage() {
             Ready to Run Your Business — Online or Offline?
           </h2>
           <p className="text-xl text-gray-400 mb-8">
-            Join hundreds of Jamaican businesses on the platform built for the Caribbean.
+            The accounting platform built from the ground up for Jamaican businesses.
           </p>
           <Link
             href="/signup"
