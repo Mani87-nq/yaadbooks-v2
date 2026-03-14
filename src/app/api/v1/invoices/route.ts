@@ -9,6 +9,7 @@ import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
 import { postInvoiceCreated } from '@/lib/accounting/engine';
 import { createNotification } from '@/lib/notification-service';
+import { auditInvoice } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -168,6 +169,24 @@ export async function POST(request: NextRequest) {
       relatedId: invoice.id,
       relatedType: 'invoice',
     }).catch(() => {});
+
+    // Audit log the invoice creation (fire-and-forget)
+    auditInvoice(
+      'INVOICE_CREATED',
+      invoice.id,
+      invoice.invoiceNumber,
+      companyId!,
+      user!.sub,
+      {
+        customerId: invoice.customerId,
+        customerName: invoice.customer?.name,
+        amount: Number(invoice.total),
+        currency: 'JMD',
+        status: invoice.status,
+        itemCount: items.length,
+      },
+      request
+    ).catch(() => {});
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {

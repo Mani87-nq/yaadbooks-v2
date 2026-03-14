@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
 import prisma from '@/lib/db';
 import { migrateLegacyPlanId } from '@/lib/billing/service';
+import { handlePaymentFailed, clearPaymentFailure } from '@/lib/billing/payment-failure';
+import { handleUpgradeRestore } from '@/lib/billing/downgrade';
+import { auditTierChange, auditPaymentFailed } from '@/lib/audit';
 
 // Stripe webhook handler for subscription events
 export async function POST(request: NextRequest) {
@@ -89,9 +92,34 @@ export async function POST(request: NextRequest) {
               stripeCustomerId: session.customer ?? null,
               stripeSubscriptionId: subscriptionId ?? null,
               subscriptionEndDate,
+              // Clear any payment failure state on successful checkout
+              paymentFailedAt: null,
+              gracePeriodNotified: false,
             },
           });
-          console.log(`Checkout completed - Company: ${companyId}, Plan: ${normalizedPlan} (raw: ${planId})`);
+
+          // Restore features if upgrading (e.g., re-enable API keys)
+          const { restoredApiKeys } = await handleUpgradeRestore(companyId, normalizedPlan);
+          if (restoredApiKeys > 0) {
+            console.log(`Checkout completed - Company: ${companyId}, Plan: ${normalizedPlan}, Restored ${restoredApiKeys} API keys`);
+          } else {
+            console.log(`Checkout completed - Company: ${companyId}, Plan: ${normalizedPlan} (raw: ${planId})`);
+          }
+
+          // Audit log the tier change (fire-and-forget)
+          auditTierChange(
+            'TIER_UPGRADED',
+            companyId,
+            userId || 'system',
+            planId,
+            normalizedPlan,
+            {
+              stripeSubscriptionId: subscriptionId,
+              stripeCustomerId: session.customer,
+              billingInterval,
+              subscriptionEndDate: subscriptionEndDate?.toISOString(),
+            }
+          ).catch(() => {});
         }
         break;
       }
@@ -122,6 +150,7 @@ export async function POST(request: NextRequest) {
           where: { stripeSubscriptionId: subscription.id },
         });
         if (company) {
+          const previousPlan = company.subscriptionPlan;
           await prisma.company.update({
             where: { id: company.id },
             data: {
@@ -130,6 +159,19 @@ export async function POST(request: NextRequest) {
             },
           });
           console.log(`Subscription cancelled - Company: ${company.id}`);
+
+          // Audit log the tier downgrade (fire-and-forget)
+          auditTierChange(
+            'TIER_DOWNGRADED',
+            company.id,
+            'system',
+            previousPlan || 'unknown',
+            'FREE',
+            {
+              reason: 'subscription_cancelled',
+              stripeSubscriptionId: subscription.id,
+            }
+          ).catch(() => {});
         }
         break;
       }
@@ -140,11 +182,34 @@ export async function POST(request: NextRequest) {
           where: { stripeCustomerId: invoice.customer },
         });
         if (company) {
-          await prisma.company.update({
-            where: { id: company.id },
-            data: { subscriptionStatus: 'PAST_DUE' },
-          });
-          console.log(`Payment failed - Company: ${company.id}`);
+          // Use the payment failure handler for proper grace period tracking
+          const result = await handlePaymentFailed(company.id, invoice.id);
+          console.log(`Payment failed - Company: ${company.id}, Result: ${result.action}`);
+
+          // Audit log the payment failure (fire-and-forget)
+          auditPaymentFailed(
+            company.id,
+            null, // No specific user for webhook events
+            result.action || 'payment_failed',
+            {
+              stripeInvoiceId: invoice.id,
+              stripeCustomerId: invoice.customer,
+              action: result.action,
+            }
+          ).catch(() => {});
+        }
+        break;
+      }
+
+      case 'invoice.paid': {
+        // Payment succeeded - clear any payment failure state
+        const invoice = event.data.object;
+        const company = await prisma.company.findFirst({
+          where: { stripeCustomerId: invoice.customer },
+        });
+        if (company) {
+          await clearPaymentFailure(company.id);
+          console.log(`Payment succeeded - Company: ${company.id}, failure state cleared`);
         }
         break;
       }

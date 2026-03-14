@@ -1,12 +1,16 @@
 /**
  * GET/POST /api/v1/employees
+ *
+ * TIER PROTECTED: Requires 'employee_portal' feature (Professional+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
-export async function GET(request: NextRequest) {
+import { withFeatureCheck } from '@/lib/tier';
+
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'payroll:read');
     if (authError) return authError;
@@ -55,7 +59,7 @@ const createEmployeeSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'payroll:create');
     if (authError) return authError;
@@ -99,3 +103,7 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to create employee');
   }
 }
+
+// Tier-protected exports: Requires 'employee_portal' feature (Professional+)
+export const GET = withFeatureCheck('employee_portal', _GET);
+export const POST = withFeatureCheck('employee_portal', _POST);

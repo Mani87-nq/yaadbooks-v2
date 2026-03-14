@@ -3,14 +3,17 @@
  * Bank Reconciliation management.
  * - GET: List reconciliations for a bank account
  * - POST: Start a new reconciliation
+ *
+ * TIER PROTECTED: Requires 'bank_reconciliation' feature (Starter+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
+import { withFeatureCheck } from '@/lib/tier';
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'banking:read');
     if (authError) return authError;
@@ -48,7 +51,7 @@ const createReconciliationSchema = z.object({
   statementBalance: z.number(),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'banking:create');
     if (authError) return authError;
@@ -127,3 +130,7 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to create reconciliation');
   }
 }
+
+// Tier-protected exports: Requires 'bank_reconciliation' feature (Starter+)
+export const GET = withFeatureCheck('bank_reconciliation', _GET);
+export const POST = withFeatureCheck('bank_reconciliation', _POST);

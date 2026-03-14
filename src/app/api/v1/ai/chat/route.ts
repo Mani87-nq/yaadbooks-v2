@@ -6,6 +6,8 @@
  * tool execution, and image analysis (Vision).
  *
  * Image support is gated behind user's own API key.
+ *
+ * TIER PROTECTED: Requires 'ai_assistant' feature (Professional+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
@@ -14,10 +16,11 @@ import { resolveAIProvider, createAnthropicClient } from '@/lib/ai/providers';
 import { AI_TOOLS } from '@/lib/ai/tools';
 import { executeTool } from '@/lib/ai/tool-handlers';
 import { buildSystemPrompt } from '@/lib/ai/system-prompt';
+import { withFeatureCheck } from '@/lib/tier';
 
 const MAX_TOOL_ITERATIONS = 10; // Safety limit to prevent infinite loops
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'reports:read');
     if (authError) return authError;
@@ -179,3 +182,6 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'AI chat failed');
   }
 }
+
+// Tier-protected export: Requires 'ai_assistant' feature (Professional+)
+export const POST = withFeatureCheck('ai_assistant', _POST);

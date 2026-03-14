@@ -1,16 +1,19 @@
 /**
  * GET  /api/v1/stock-transfers — List transfers (paginated, filterable)
  * POST /api/v1/stock-transfers — Create a new stock transfer
+ *
+ * TIER PROTECTED: Requires 'inventory' feature (Starter+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
+import { withFeatureCheck } from '@/lib/tier';
 
 const VALID_STATUSES = ['DRAFT', 'PENDING', 'APPROVED', 'IN_TRANSIT', 'RECEIVED', 'CANCELLED'] as const;
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'inventory:read');
     if (authError) return authError;
@@ -74,7 +77,7 @@ const createTransferSchema = z.object({
   status: z.enum(['DRAFT', 'PENDING']).default('DRAFT'),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'inventory:create');
     if (authError) return authError;
@@ -162,3 +165,7 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to create stock transfer');
   }
 }
+
+// Tier-protected exports: Requires 'inventory' feature (Starter+)
+export const GET = withFeatureCheck('inventory', _GET);
+export const POST = withFeatureCheck('inventory', _POST);

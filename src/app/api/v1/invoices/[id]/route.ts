@@ -9,6 +9,7 @@ import Decimal from 'decimal.js';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { notFound, badRequest, internalError } from '@/lib/api-error';
+import { auditInvoice } from '@/lib/audit';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -131,6 +132,22 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         });
       });
 
+      // Audit log the invoice edit (fire-and-forget)
+      auditInvoice(
+        'INVOICE_EDITED',
+        id,
+        invoice.invoiceNumber,
+        companyId!,
+        user!.sub,
+        {
+          customerId: invoice.customerId,
+          previousAmount: Number(existing.total),
+          newAmount: Number(invoice.total),
+          itemsChanged: true,
+        },
+        request
+      ).catch(() => {});
+
       return NextResponse.json(invoice);
     }
 
@@ -163,6 +180,22 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     await prisma.invoice.update({ where: { id }, data: { deletedAt: new Date() } });
+
+    // Audit log the invoice deletion (fire-and-forget)
+    auditInvoice(
+      'INVOICE_DELETED',
+      id,
+      existing.invoiceNumber,
+      companyId!,
+      user!.sub,
+      {
+        customerId: existing.customerId,
+        amount: Number(existing.total),
+        status: existing.status,
+      },
+      request
+    ).catch(() => {});
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     return internalError(error instanceof Error ? error.message : 'Failed to delete invoice');

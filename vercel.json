@@ -28,6 +28,14 @@
     {
       "path": "/api/cron/data-cleanup",
       "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/grace-period-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/auto-downgrade",
+      "schedule": "0 10 * * *"
     }
   ]
 }

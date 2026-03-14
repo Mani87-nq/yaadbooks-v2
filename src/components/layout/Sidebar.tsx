@@ -9,6 +9,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import type { Permission } from '@/lib/auth/rbac';
 import { useActiveModuleIds } from '@/modules/store';
 import { moduleRegistry } from '@/modules/registry';
+import { useTier, type TierFeature } from '@/hooks/useTier';
+import { LockedNavItem } from '@/components/tier';
 import {
   HomeIcon,
   ShoppingCartIcon,
@@ -43,6 +45,7 @@ import {
   PrinterIcon,
   CreditCardIcon,
   PuzzlePieceIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { ICON_MAP } from '@/lib/icon-map';
 
@@ -53,6 +56,8 @@ interface NavItem {
   badge?: string;
   /** Permission required to see this item. null = visible to everyone. */
   permission?: Permission | null;
+  /** Tier feature required for this item. If user doesn't have tier, shows locked. */
+  tierFeature?: TierFeature;
 }
 
 interface NavGroup {
@@ -65,11 +70,11 @@ const navigation: NavGroup[] = [
     name: 'Main',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, permission: null },
-      { name: 'Point of Sale', href: '/pos', icon: ShoppingCartIcon, badge: 'NEW', permission: 'pos:read' },
-      { name: 'Day Management', href: '/pos/day-management', icon: CalendarDaysIcon, permission: 'pos:read' },
-      { name: 'POS Returns', href: '/pos/returns', icon: ReceiptRefundIcon, permission: 'pos:read' },
-      { name: 'POS Sessions', href: '/pos/sessions', icon: ClockIcon, permission: 'pos:read' },
-      { name: 'POS Grid Settings', href: '/pos/grid-settings', icon: Cog6ToothIcon, permission: 'pos:read' },
+      { name: 'Point of Sale', href: '/pos', icon: ShoppingCartIcon, badge: 'NEW', permission: 'pos:read', tierFeature: 'pos' },
+      { name: 'Day Management', href: '/pos/day-management', icon: CalendarDaysIcon, permission: 'pos:read', tierFeature: 'pos' },
+      { name: 'POS Returns', href: '/pos/returns', icon: ReceiptRefundIcon, permission: 'pos:read', tierFeature: 'pos' },
+      { name: 'POS Sessions', href: '/pos/sessions', icon: ClockIcon, permission: 'pos:read', tierFeature: 'pos' },
+      { name: 'POS Grid Settings', href: '/pos/grid-settings', icon: Cog6ToothIcon, permission: 'pos:read', tierFeature: 'pos' },
     ],
   },
   {
@@ -87,8 +92,8 @@ const navigation: NavGroup[] = [
   {
     name: 'Operations',
     items: [
-      { name: 'Inventory', href: '/inventory', icon: CubeIcon, permission: 'inventory:read' },
-      { name: 'Stock Transfers', href: '/stock-transfers', icon: ArrowsRightLeftIcon, permission: 'inventory:read' },
+      { name: 'Inventory', href: '/inventory', icon: CubeIcon, permission: 'inventory:read', tierFeature: 'inventory' },
+      { name: 'Stock Transfers', href: '/stock-transfers', icon: ArrowsRightLeftIcon, permission: 'inventory:read', tierFeature: 'inventory' },
       { name: 'Expenses', href: '/expenses', icon: BanknotesIcon, permission: 'expenses:read' },
     ],
   },
@@ -99,39 +104,39 @@ const navigation: NavGroup[] = [
       { name: 'Journal Entries', href: '/accounting/journal', icon: BookOpenIcon, permission: 'journal:read' },
       { name: 'Fixed Assets', href: '/fixed-assets', icon: WrenchScrewdriverIcon, permission: 'fixed_assets:read' },
       { name: 'Banking', href: '/banking', icon: BuildingLibraryIcon, permission: 'banking:read' },
-      { name: 'Bank Reconciliation', href: '/banking/reconciliation', icon: ScaleIcon, permission: 'banking:reconcile' },
+      { name: 'Bank Reconciliation', href: '/banking/reconciliation', icon: ScaleIcon, permission: 'banking:reconcile', tierFeature: 'bank_reconciliation' },
       { name: 'Budgets', href: '/accounting/budgets', icon: CalculatorIcon, badge: 'NEW', permission: 'gl:read' },
     ],
   },
   {
     name: 'HR & Payroll',
     items: [
-      { name: 'Payroll', href: '/payroll', icon: UsersIcon, permission: 'payroll:read' },
-      { name: 'Pension Plans', href: '/payroll/pension-plans', icon: BuildingLibraryIcon, badge: 'NEW', permission: 'payroll:read' },
-      { name: 'Remittances', href: '/payroll/remittances', icon: BanknotesIcon, badge: 'NEW', permission: 'payroll:read' },
+      { name: 'Payroll', href: '/payroll', icon: UsersIcon, permission: 'payroll:read', tierFeature: 'payroll' },
+      { name: 'Pension Plans', href: '/payroll/pension-plans', icon: BuildingLibraryIcon, badge: 'NEW', permission: 'payroll:read', tierFeature: 'payroll' },
+      { name: 'Remittances', href: '/payroll/remittances', icon: BanknotesIcon, badge: 'NEW', permission: 'payroll:read', tierFeature: 'payroll' },
     ],
   },
   {
     name: 'Reports & AI',
     items: [
-      { name: 'Reports', href: '/reports', icon: ChartBarIcon, permission: 'reports:read' },
-      { name: 'KPI Dashboard', href: '/reports/kpi', icon: ArrowTrendingUpIcon, badge: 'NEW', permission: 'reports:read' },
-      { name: 'Budget vs Actual', href: '/reports/budget-vs-actual', icon: ScaleIcon, badge: 'NEW', permission: 'reports:read' },
-      { name: 'Departmental P&L', href: '/reports/departmental-pl', icon: BuildingOffice2Icon, badge: 'NEW', permission: 'reports:read' },
-      { name: 'Customer Profitability', href: '/reports/customer-profitability', icon: UserGroupIcon, badge: 'NEW', permission: 'reports:read' },
-      { name: 'Stock Valuation', href: '/reports/stock-valuation', icon: CubeIcon, badge: 'NEW', permission: 'reports:read' },
-      { name: 'Trial Balance', href: '/reports/trial-balance', icon: CalculatorIcon, permission: 'reports:read' },
-      { name: 'General Ledger', href: '/reports/general-ledger', icon: BookOpenIcon, permission: 'reports:read' },
-      { name: 'Cash Flow', href: '/reports/cash-flow', icon: ArrowTrendingUpIcon, permission: 'reports:read' },
-      { name: 'AR/AP Aging', href: '/reports/aging', icon: ClipboardDocumentListIcon, permission: 'reports:read' },
+      { name: 'Reports', href: '/reports', icon: ChartBarIcon, permission: 'reports:read', tierFeature: 'all_reports' },
+      { name: 'KPI Dashboard', href: '/reports/kpi', icon: ArrowTrendingUpIcon, badge: 'NEW', permission: 'reports:read', tierFeature: 'advanced_analytics' },
+      { name: 'Budget vs Actual', href: '/reports/budget-vs-actual', icon: ScaleIcon, badge: 'NEW', permission: 'reports:read', tierFeature: 'advanced_analytics' },
+      { name: 'Departmental P&L', href: '/reports/departmental-pl', icon: BuildingOffice2Icon, badge: 'NEW', permission: 'reports:read', tierFeature: 'advanced_analytics' },
+      { name: 'Customer Profitability', href: '/reports/customer-profitability', icon: UserGroupIcon, badge: 'NEW', permission: 'reports:read', tierFeature: 'advanced_analytics' },
+      { name: 'Stock Valuation', href: '/reports/stock-valuation', icon: CubeIcon, badge: 'NEW', permission: 'reports:read', tierFeature: 'all_reports' },
+      { name: 'Trial Balance', href: '/reports/trial-balance', icon: CalculatorIcon, permission: 'reports:read', tierFeature: 'all_reports' },
+      { name: 'General Ledger', href: '/reports/general-ledger', icon: BookOpenIcon, permission: 'reports:read', tierFeature: 'all_reports' },
+      { name: 'Cash Flow', href: '/reports/cash-flow', icon: ArrowTrendingUpIcon, permission: 'reports:read', tierFeature: 'all_reports' },
+      { name: 'AR/AP Aging', href: '/reports/aging', icon: ClipboardDocumentListIcon, permission: 'reports:read', tierFeature: 'all_reports' },
       { name: 'Audit Trail', href: '/reports/audit-trail', icon: ShieldCheckIcon, permission: 'audit:read' },
-      { name: 'AI Assistant', href: '/ai', icon: SparklesIcon, badge: 'AI', permission: null },
+      { name: 'AI Assistant', href: '/ai', icon: SparklesIcon, badge: 'AI', permission: null, tierFeature: 'ai_assistant' },
     ],
   },
   {
     name: 'System',
     items: [
-      { name: 'Modules', href: '/modules', icon: PuzzlePieceIcon, badge: 'NEW', permission: null },
+      { name: 'Modules', href: '/modules', icon: PuzzlePieceIcon, badge: 'NEW', permission: null, tierFeature: 'industry_modules' },
       { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, permission: 'settings:read' },
       { name: 'Billing', href: '/billing', icon: CreditCardIcon, permission: null },
       { name: 'Receipt Printer', href: '/settings/receipt-printer', icon: PrinterIcon, badge: 'NEW', permission: null },
@@ -200,6 +205,7 @@ export function Sidebar() {
   const activeCompany = useAppStore((s) => s.activeCompany);
   const { can } = usePermissions();
   const activeModuleIds = useActiveModuleIds();
+  const { hasFeature } = useTier();
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(defaultExpanded);
 
@@ -396,6 +402,9 @@ export function Sidebar() {
                       const isActive =
                         pathname === item.href || pathname?.startsWith(item.href + '/');
 
+                      // Check if feature is locked by tier
+                      const isLocked = item.tierFeature && !hasFeature(item.tierFeature);
+
                       // Tour target attributes for guided product tour
                       const tourTarget =
                         item.href === '/modules' ? 'sidebar-modules' :
@@ -404,6 +413,22 @@ export function Sidebar() {
                         item.href === '/invoices' ? 'sidebar-invoices' :
                         item.href === '/pos' ? 'sidebar-pos' :
                         undefined;
+
+                      // Render locked nav item
+                      if (isLocked && item.tierFeature) {
+                        return (
+                          <li key={item.name}>
+                            <LockedNavItem
+                              feature={item.tierFeature}
+                              name={item.name}
+                              icon={item.icon}
+                              href={item.href}
+                              badge={item.badge}
+                              sidebarOpen={sidebarOpen}
+                            />
+                          </li>
+                        );
+                      }
 
                       return (
                         <li key={item.name}>

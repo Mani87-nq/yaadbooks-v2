@@ -548,6 +548,16 @@ enum DiscountType {
 }
 
 // ============================================
+// ENUMS - TIER LOCKDOWN
+// ============================================
+
+enum IndustryModule {
+  RETAIL
+  RESTAURANT
+  SALON
+}
+
+// ============================================
 // USER & AUTHENTICATION
 // ============================================
 
@@ -772,6 +782,15 @@ model Company {
   stripeSubscriptionId   String?
   subscriptionStartDate  DateTime?
   subscriptionEndDate    DateTime?
+  
+  // Tier Lockdown Fields
+  selectedModule         IndustryModule?      // Professional tier module selection (retail/restaurant/salon)
+  invoiceCountThisMonth  Int                  @default(0)
+  aiQuestionsThisMonth   Int                  @default(0)
+  billingCycleStart      DateTime?            // Start of current billing cycle for limit resets
+  storageUsedMb          Int                  @default(0)
+  paymentFailedAt        DateTime?            // When payment failure was detected
+  gracePeriodNotified    Boolean              @default(false)
   
   // Invoice settings (JSON for flexibility)
   invoicePrefix    String        @default("INV")

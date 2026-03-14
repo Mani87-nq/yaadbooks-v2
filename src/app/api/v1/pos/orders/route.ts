@@ -1,18 +1,22 @@
 /**
  * GET  /api/v1/pos/orders — List orders (paginated, filterable by status/sessionId)
  * POST /api/v1/pos/orders — Create order with items (auto-generate orderNumber)
+ *
+ * TIER PROTECTED: Requires 'pos' feature (Professional+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
+import { withFeatureCheck } from '@/lib/tier';
+
 const VALID_ORDER_STATUSES = [
   'DRAFT', 'HELD', 'PENDING_PAYMENT', 'PARTIALLY_PAID',
   'COMPLETED', 'VOIDED', 'REFUNDED',
 ] as const;
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'pos:read');
     if (authError) return authError;
@@ -100,7 +104,7 @@ const createOrderSchema = z.object({
   status: z.enum(['DRAFT', 'PENDING_PAYMENT']).default('PENDING_PAYMENT'),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'pos:create');
     if (authError) return authError;
@@ -279,3 +283,7 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to create order');
   }
 }
+
+// Tier-protected exports: Requires 'pos' feature (Professional+)
+export const GET = withFeatureCheck('pos', _GET);
+export const POST = withFeatureCheck('pos', _POST);

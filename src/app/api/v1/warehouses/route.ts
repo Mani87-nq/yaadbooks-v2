@@ -1,14 +1,17 @@
 /**
  * GET  /api/v1/warehouses — List warehouses
  * POST /api/v1/warehouses — Create a warehouse
+ *
+ * TIER PROTECTED: Requires 'inventory' feature (Starter+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
+import { withFeatureCheck } from '@/lib/tier';
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'inventory:read');
     if (authError) return authError;
@@ -46,7 +49,7 @@ const createWarehouseSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'inventory:create');
     if (authError) return authError;
@@ -100,3 +103,7 @@ export async function POST(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to create warehouse');
   }
 }
+
+// Tier-protected exports: Requires 'inventory' feature (Starter+)
+export const GET = withFeatureCheck('inventory', _GET);
+export const POST = withFeatureCheck('inventory', _POST);

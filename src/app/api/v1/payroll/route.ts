@@ -1,6 +1,8 @@
 /**
  * GET  /api/v1/payroll — List payroll runs
  * POST /api/v1/payroll — Create a new payroll run with server-side tax calculations
+ *
+ * TIER PROTECTED: Requires 'payroll' feature (Starter+)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
@@ -9,10 +11,12 @@ import { requirePermission, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
 import { calculatePayroll, type PayrollCalculation } from '@/lib/payroll/tax-calculator';
 import { postPayrollRun } from '@/lib/accounting/engine';
+import { withFeatureCheck } from '@/lib/tier';
+import { auditPayroll } from '@/lib/audit';
 
 // ─── GET: List payroll runs ──────────────────────────────────────
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'payroll:read');
     if (authError) return authError;
@@ -82,7 +86,7 @@ const createPayrollSchema = z.object({
   employees: z.array(payrollEntrySchema).min(1),
 });
 
-export async function POST(request: NextRequest) {
+async function _POST(request: NextRequest) {
   try {
     const { user, error: authError } = await requirePermission(request, 'payroll:create');
     if (authError) return authError;
@@ -360,8 +364,31 @@ export async function POST(request: NextRequest) {
       return run;
     });
 
+    // Audit log the payroll creation (fire-and-forget)
+    auditPayroll(
+      'PAYROLL_RUN_CREATED',
+      payrollRun.id,
+      companyId!,
+      user!.sub,
+      {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        payDate: payDate.toISOString(),
+        employeeCount: employees.length,
+        totalGross: totals.totalGross,
+        totalNet: totals.totalNet,
+        totalDeductions: totals.totalDeductions,
+        totalEmployerContributions: totals.totalEmployerContributions,
+      },
+      request
+    ).catch(() => {});
+
     return NextResponse.json(payrollRun, { status: 201 });
   } catch (error) {
     return internalError(error instanceof Error ? error.message : 'Failed to create payroll run');
   }
 }
+
+// Tier-protected exports: Requires 'payroll' feature (Starter+)
+export const GET = withFeatureCheck('payroll', _GET);
+export const POST = withFeatureCheck('payroll', _POST);

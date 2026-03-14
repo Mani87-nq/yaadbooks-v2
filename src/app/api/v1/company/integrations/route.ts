@@ -7,6 +7,8 @@
  *
  * API keys are encrypted at rest with AES-256-GCM.
  * On GET, keys are masked (only last 8 chars returned).
+ *
+ * TIER PROTECTED: Requires 'custom_integrations' feature (Enterprise)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod/v4';
@@ -15,6 +17,7 @@ import { requireAuth, requireCompany } from '@/lib/auth/middleware';
 import { badRequest, internalError } from '@/lib/api-error';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { maskApiKey } from '@/lib/ai/providers';
+import { withFeatureCheck } from '@/lib/tier';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -199,7 +202,7 @@ function maskSettings(settings: IntegrationSettings): IntegrationSettings {
 
 // ─── GET ────────────────────────────────────────────────────────
 
-export async function GET(request: NextRequest) {
+async function _GET(request: NextRequest) {
   try {
     const { user, error: authError } = await requireAuth(request);
     if (authError) return authError;
@@ -335,7 +338,7 @@ function isMaskedKey(value: string | undefined): boolean {
   return value.includes('...') || value === '***encrypted***' || value === '***';
 }
 
-export async function PATCH(request: NextRequest) {
+async function _PATCH(request: NextRequest) {
   try {
     const { user, error: authError } = await requireAuth(request);
     if (authError) return authError;
@@ -491,3 +494,7 @@ export async function PATCH(request: NextRequest) {
     return internalError(error instanceof Error ? error.message : 'Failed to update integrations');
   }
 }
+
+// Tier-protected exports: Requires 'custom_integrations' feature (Enterprise)
+export const GET = withFeatureCheck('custom_integrations', _GET);
+export const PATCH = withFeatureCheck('custom_integrations', _PATCH);

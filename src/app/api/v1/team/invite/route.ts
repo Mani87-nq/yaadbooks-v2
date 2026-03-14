@@ -21,6 +21,7 @@ import { compareRoles, type Role } from '@/lib/auth/rbac';
 import { checkPlanLimits } from '@/lib/billing/service';
 import { sendEmail } from '@/lib/email/service';
 import { teamInviteEmail } from '@/lib/email/templates';
+import { auditUserAction } from '@/lib/audit';
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -136,6 +137,21 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Audit log the user addition (fire-and-forget)
+      auditUserAction(
+        'USER_JOINED',
+        existingUser.id,
+        existingUser.email,
+        companyId,
+        user!.sub,
+        {
+          role: targetRole,
+          membershipId: membership.id,
+          inviterRole: inviterRole,
+        },
+        request
+      ).catch(() => {});
+
       return NextResponse.json(
         {
           data: {
@@ -211,6 +227,22 @@ export async function POST(request: NextRequest) {
         role: targetRole,
       }),
     }).catch((err) => console.error('[Invite] Failed to send invite email:', err));
+
+    // Audit log the invitation (fire-and-forget)
+    auditUserAction(
+      'USER_INVITED',
+      invite.id, // Using invite ID since user doesn't exist yet
+      normalizedEmail,
+      companyId,
+      user!.sub,
+      {
+        role: targetRole,
+        inviteId: invite.id,
+        inviterRole: inviterRole,
+        expiresAt: invite.expiresAt.toISOString(),
+      },
+      request
+    ).catch(() => {});
 
     return NextResponse.json(
       {
