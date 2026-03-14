@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/appStore';
 import { useAuth } from '@/hooks/useAuth';
+import { AccountantViewBadge } from '@/components/accountant';
 import {
   Bars3Icon,
   BellIcon,
@@ -15,7 +16,14 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
+
+// Accountant view context (stored separately from main app store)
+interface AccountantContext {
+  isAccountantView: boolean;
+  clientCompanyName: string | null;
+}
 
 export function Header() {
   const router = useRouter();
@@ -23,8 +31,43 @@ export function Header() {
   const { setSidebarOpen, user, activeCompany, companies, switchCompany } = useAppStore();
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Accountant view state
+  const [accountantContext, setAccountantContext] = useState<AccountantContext>({
+    isAccountantView: false,
+    clientCompanyName: null,
+  });
+
+  // Check if user is in accountant view mode
+  useEffect(() => {
+    const checkAccountantView = () => {
+      // Check localStorage for accountant context (set by switch-client API)
+      const stored = localStorage.getItem('yaadbooks_accountant_context');
+      if (stored) {
+        try {
+          const ctx = JSON.parse(stored);
+          setAccountantContext({
+            isAccountantView: ctx.isAccountantView || false,
+            clientCompanyName: ctx.clientCompanyName || null,
+          });
+        } catch {
+          setAccountantContext({ isAccountantView: false, clientCompanyName: null });
+        }
+      }
+    };
+    checkAccountantView();
+    // Listen for storage changes (in case context changes in another tab)
+    window.addEventListener('storage', checkAccountantView);
+    return () => window.removeEventListener('storage', checkAccountantView);
+  }, [activeCompany?.id]);
+
+  const handleBackToAccountantDashboard = () => {
+    // Clear accountant context and navigate back
+    localStorage.removeItem('yaadbooks_accountant_context');
+    setAccountantContext({ isAccountantView: false, clientCompanyName: null });
+    router.push('/accountant');
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -103,6 +146,23 @@ export function Header() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Accountant View Indicator */}
+        {accountantContext.isAccountantView && accountantContext.clientCompanyName && (
+          <div className="flex items-center gap-2">
+            <AccountantViewBadge
+              clientCompanyName={accountantContext.clientCompanyName}
+              onClick={handleBackToAccountantDashboard}
+            />
+            <button
+              onClick={handleBackToAccountantDashboard}
+              className="p-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+              title="Back to Accountant Dashboard"
+            >
+              <ArrowUturnLeftIcon className="h-4 w-4" />
+            </button>
           </div>
         )}
 

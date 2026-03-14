@@ -85,6 +85,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
           id: clientRelationship.company.id,
           businessName: clientRelationship.company.businessName,
         },
+        // Accountant context for UI rendering
+        accountantContext: {
+          isAccountantView: true,
+          clientCompanyId: companyId,
+          clientCompanyName: clientRelationship.company.businessName,
+        },
       },
       message: `Switched to ${clientRelationship.company.businessName}`,
     });

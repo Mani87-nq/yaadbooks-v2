@@ -781,6 +781,10 @@ model AccountantClient {
   invitedAt    DateTime               @default(now())
   acceptedAt   DateTime?
 
+  // Invitation token (secure, single-use)
+  invitationToken     String?   @unique
+  invitationExpiresAt DateTime?
+
   // Access settings
   canAccessPayroll Boolean @default(true)
   canAccessBanking Boolean @default(true)
@@ -796,6 +800,7 @@ model AccountantClient {
   @@unique([accountantId, companyId])
   @@index([accountantId])
   @@index([companyId])
+  @@index([invitationToken])
 }
 
 // ============================================

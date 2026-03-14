@@ -71,3 +71,49 @@ export function requireCompany(user: AccessTokenPayload) {
   }
   return { companyId, error: null };
 }
+
+/**
+ * Check if the user is currently operating in accountant mode.
+ * (i.e., viewing a client's books rather than their own company)
+ */
+export interface AccountantContext {
+  isAccountantView: boolean;  // True when accountant is viewing client's books
+  accountantId: string | null; // The accountant's user ID
+  clientCompanyId: string | null; // The client company being viewed
+}
+
+export function getAccountantContext(user: AccessTokenPayload): AccountantContext {
+  // If user has ACCOUNTANT role and is accessing a company that isn't
+  // their "home" company, they're in accountant view mode.
+  // The token's companies[] includes all companies they can access
+  // (both their own memberships AND accountant-client relationships)
+  
+  // For now, we determine accountant view by checking:
+  // 1. User role is ACCOUNTANT (or higher with accountant capabilities)
+  // 2. The activeCompanyId is in their companies list but came from AccountantClient
+  
+  // Note: The full check requires DB access - this is a lightweight token-based check
+  const isAccountant = ['ACCOUNTANT', 'ADMIN', 'OWNER'].includes(user.role);
+  
+  return {
+    isAccountantView: isAccountant && user.activeCompanyId !== null,
+    accountantId: isAccountant ? user.sub : null,
+    clientCompanyId: user.activeCompanyId,
+  };
+}
+
+/**
+ * Require accountant permissions for multi-client features.
+ * Only ACCOUNTANT, ADMIN, and OWNER roles can use accountant features.
+ */
+export async function requireAccountantRole(request: NextRequest) {
+  const { user, error } = await requireAuth(request);
+  if (error) return { user: null, error };
+
+  const allowedRoles = ['ACCOUNTANT', 'ADMIN', 'OWNER'];
+  if (!allowedRoles.includes(user!.role)) {
+    return { user: null, error: forbidden('Accountant role required') };
+  }
+
+  return { user: user!, error: null };
+}

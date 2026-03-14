@@ -5,12 +5,14 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from '@/components/ui';
-import { ClientCard, ClientCardCompact, AlertsPanel, AddClientModal } from '@/components/accountant';
+import { ClientCard, ClientCardCompact, AlertsPanel, AddClientModal, PendingInvitationsPanel } from '@/components/accountant';
 import {
   useAccountantStore,
   useFilteredClients,
   useAccountantStats,
   useAllAlerts,
+  usePendingInvitations,
+  useAccountantError,
 } from '@/store/accountantStore';
 import { formatJMD } from '@/lib/utils';
 import {
@@ -56,6 +58,25 @@ function StatsCard({
   );
 }
 
+// Pending Invitations Section (uses store hooks)
+function PendingInvitationsSection() {
+  const pendingInvitations = usePendingInvitations();
+  const { resendInvitation, cancelInvitation, isLoading } = useAccountantStore();
+
+  if (pendingInvitations.length === 0) {
+    return null;
+  }
+
+  return (
+    <PendingInvitationsPanel
+      invitations={pendingInvitations}
+      onResend={resendInvitation}
+      onCancel={cancelInvitation}
+      isLoading={isLoading}
+    />
+  );
+}
+
 export default function AccountantDashboardPage() {
   const {
     searchQuery,
@@ -74,6 +95,8 @@ export default function AccountantDashboardPage() {
   const clients = useFilteredClients();
   const stats = useAccountantStats();
   const allAlerts = useAllAlerts();
+  const error = useAccountantError();
+  const clearError = useAccountantStore((state) => state.clearError);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
 
@@ -91,6 +114,25 @@ export default function AccountantDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-red-700">
+            <ExclamationTriangleIcon className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Unable to load live data</p>
+              <p className="text-sm text-red-600">{error} — Showing demo data instead</p>
+            </div>
+          </div>
+          <button
+            onClick={clearError}
+            className="text-red-500 hover:text-red-700 text-sm font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -154,6 +196,9 @@ export default function AccountantDashboardPage() {
           color="bg-orange-500"
         />
       </div>
+
+      {/* Pending Invitations Panel */}
+      <PendingInvitationsSection />
 
       {/* Alerts Panel */}
       {allAlerts.length > 0 && (

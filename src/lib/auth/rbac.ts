@@ -39,7 +39,9 @@ export type Permission =
   // Tax
   | 'tax:read' | 'tax:export' | 'tax:file'
   // Inventory (Purchase Orders, Goods Received Notes)
-  | 'inventory:read' | 'inventory:create' | 'inventory:update' | 'inventory:delete';
+  | 'inventory:read' | 'inventory:create' | 'inventory:update' | 'inventory:delete'
+  // Accountant-specific permissions (multi-client management)
+  | 'accountant:clients' | 'accountant:switch' | 'accountant:dashboard';
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   READ_ONLY: [
@@ -85,6 +87,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'tax:export', 'tax:file',
     'audit:read',
     'inventory:delete',
+    // Multi-client management for external accountants
+    'accountant:clients',   // Manage client relationships (invite, suspend, view)
+    'accountant:switch',    // Switch between client company contexts
+    'accountant:dashboard', // View aggregated multi-client dashboard
   ],
 
   ADMIN: [

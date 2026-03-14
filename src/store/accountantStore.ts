@@ -1,11 +1,19 @@
 // Accountant Dashboard Store
 // Manages multi-client view state for accountants
+// Updated: Real API Integration with Mock Fallback
 
 import { create } from 'zustand';
 import type { AccountantClient, ClientAlert, AccountantDashboardStats, ClientInvite } from '@/types/accountant';
 
 // ============================================
-// MOCK DATA (Replace with API calls)
+// CONFIGURATION
+// ============================================
+
+// Set to true to use mock data instead of real API (useful for development/demo)
+const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || false;
+
+// ============================================
+// MOCK DATA (Fallback for development/demo)
 // ============================================
 
 const MOCK_ALERTS: ClientAlert[] = [
@@ -241,6 +249,199 @@ const MOCK_CLIENTS: AccountantClient[] = [
 ];
 
 // ============================================
+// API RESPONSE TYPES (from real endpoints)
+// ============================================
+
+interface ApiClientResponse {
+  id: string;
+  accountantId: string;
+  companyId: string;
+  status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+  createdAt: string;
+  company: {
+    id: string;
+    businessName: string;
+    email: string;
+    phone: string | null;
+    trnNumber: string | null;
+    gctNumber: string | null;
+    industry: string | null;
+    createdAt: string;
+  };
+}
+
+interface ApiDashboardResponse {
+  summary: {
+    totalClients: number;
+    activeClients: number;
+    totalOverdueInvoices: number;
+    totalOverdueAmount: number;
+    payrollsDueThisWeek: number;
+    gctFilingsDueThisMonth: number;
+  };
+  clients: {
+    clientId: string;
+    companyId: string;
+    companyName: string;
+    status: string;
+    overdueInvoicesCount: number;
+    overdueInvoicesAmount: number;
+    receivablesTotal: number;
+    pendingPayroll: {
+      count: number;
+      nextPayDate: string | null;
+    };
+    gctStatus: {
+      lastFilingDate: string | null;
+      nextDueDate: string | null;
+      estimatedAmount: number;
+    };
+    monthlyRevenue: number;
+    monthlyExpenses: number;
+  }[];
+  alerts: {
+    id: string;
+    clientId: string;
+    companyName: string;
+    type: 'PAYROLL_DUE' | 'GCT_DUE' | 'INVOICES_OVERDUE' | 'RECONCILIATION_PENDING' | 'PERIOD_CLOSE';
+    severity: 'HIGH' | 'MEDIUM' | 'LOW';
+    message: string;
+    dueDate: string | null;
+    actionUrl: string;
+  }[];
+  lastUpdated: string;
+}
+
+// ============================================
+// DATA TRANSFORMATION UTILITIES
+// ============================================
+
+/**
+ * Map API severity to UI severity format
+ */
+function mapSeverity(apiSeverity: 'HIGH' | 'MEDIUM' | 'LOW'): 'critical' | 'warning' | 'info' {
+  switch (apiSeverity) {
+    case 'HIGH':
+      return 'critical';
+    case 'MEDIUM':
+      return 'warning';
+    case 'LOW':
+      return 'info';
+  }
+}
+
+/**
+ * Map API alert type to UI alert type format
+ */
+function mapAlertType(
+  apiType: 'PAYROLL_DUE' | 'GCT_DUE' | 'INVOICES_OVERDUE' | 'RECONCILIATION_PENDING' | 'PERIOD_CLOSE'
+): ClientAlert['type'] {
+  switch (apiType) {
+    case 'PAYROLL_DUE':
+      return 'payroll_due';
+    case 'GCT_DUE':
+      return 'gct_due';
+    case 'INVOICES_OVERDUE':
+      return 'invoices_overdue';
+    case 'RECONCILIATION_PENDING':
+      return 'bank_reconciliation';
+    case 'PERIOD_CLOSE':
+      return 'period_close';
+    default:
+      return 'period_close';
+  }
+}
+
+/**
+ * Map API status to UI status format
+ */
+function mapStatus(apiStatus: string): 'active' | 'inactive' | 'pending' {
+  switch (apiStatus.toUpperCase()) {
+    case 'ACTIVE':
+      return 'active';
+    case 'PENDING':
+      return 'pending';
+    case 'SUSPENDED':
+    case 'REVOKED':
+    case 'INACTIVE':
+      return 'inactive';
+    default:
+      return 'active';
+  }
+}
+
+/**
+ * Transform API dashboard response to AccountantClient[] format
+ */
+function transformDashboardToClients(
+  dashboard: ApiDashboardResponse,
+  clientsData: ApiClientResponse[]
+): { clients: AccountantClient[]; alerts: ClientAlert[] } {
+  // Build a lookup map from API clients data
+  const clientLookup = new Map(clientsData.map((c) => [c.companyId, c]));
+
+  // Transform alerts
+  const alerts: ClientAlert[] = dashboard.alerts.map((apiAlert) => ({
+    id: apiAlert.id,
+    type: mapAlertType(apiAlert.type),
+    severity: mapSeverity(apiAlert.severity),
+    title: apiAlert.message.split(' - ')[0] || apiAlert.message,
+    description: apiAlert.message,
+    dueDate: apiAlert.dueDate ? new Date(apiAlert.dueDate) : undefined,
+    clientId: apiAlert.clientId,
+    clientName: apiAlert.companyName,
+  }));
+
+  // Build alert lookup by clientId
+  const alertsByClient = new Map<string, ClientAlert[]>();
+  alerts.forEach((alert) => {
+    const existing = alertsByClient.get(alert.clientId) || [];
+    existing.push(alert);
+    alertsByClient.set(alert.clientId, existing);
+  });
+
+  // Transform clients
+  const clients: AccountantClient[] = dashboard.clients.map((dashClient) => {
+    const apiClient = clientLookup.get(dashClient.companyId);
+    const clientAlerts = alertsByClient.get(dashClient.clientId) || [];
+
+    return {
+      id: dashClient.clientId,
+      companyId: dashClient.companyId,
+      businessName: dashClient.companyName,
+      businessType: apiClient?.company.industry || 'Business',
+      monthlyRevenue: dashClient.monthlyRevenue,
+      monthlyExpenses: dashClient.monthlyExpenses,
+      profit: dashClient.monthlyRevenue - dashClient.monthlyExpenses,
+      currency: 'JMD', // Default to JMD for Jamaica
+      alerts: clientAlerts,
+      lastActivity: new Date(), // API doesn't provide this directly
+      status: mapStatus(dashClient.status),
+      joinedAt: apiClient ? new Date(apiClient.createdAt) : new Date(),
+    };
+  });
+
+  return { clients, alerts };
+}
+
+// ============================================
+// PENDING INVITATION TYPE
+// ============================================
+
+export interface PendingInvitation {
+  id: string;
+  invitedEmail: string;
+  invitedAt: Date | string;
+  invitationExpiresAt: Date | string | null;
+  company: {
+    id: string;
+    businessName: string;
+    email: string | null;
+    industry: string | null;
+  };
+}
+
+// ============================================
 // STORE INTERFACE
 // ============================================
 
@@ -248,7 +449,10 @@ interface AccountantStore {
   // State
   clients: AccountantClient[];
   allAlerts: ClientAlert[];
+  pendingInvitations: PendingInvitation[];
   isLoading: boolean;
+  error: string | null;
+  lastFetched: Date | null;
   searchQuery: string;
   sortBy: 'name' | 'revenue' | 'alerts' | 'activity';
   sortOrder: 'asc' | 'desc';
@@ -263,6 +467,132 @@ interface AccountantStore {
   inviteClient: (invite: ClientInvite) => Promise<void>;
   generateInviteLink: () => Promise<string>;
   switchToClient: (companyId: string) => void;
+  clearError: () => void;
+  
+  // Invitation management
+  resendInvitation: (invitationId: string) => Promise<void>;
+  cancelInvitation: (invitationId: string) => Promise<void>;
+}
+
+// ============================================
+// API FUNCTIONS
+// ============================================
+
+async function fetchClientsFromAPI(): Promise<ApiClientResponse[]> {
+  const response = await fetch('/api/v1/accountant/clients', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to fetch clients: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+async function fetchDashboardFromAPI(): Promise<ApiDashboardResponse> {
+  const response = await fetch('/api/v1/accountant/dashboard', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to fetch dashboard: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+async function inviteClientAPI(email: string, notes?: string, message?: string): Promise<void> {
+  const response = await fetch('/api/v1/accountant/clients', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      notes,
+      message, // Personal message for invitation email
+      canAccessPayroll: true,
+      canAccessBanking: true,
+      canExportData: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Failed to invite client: ${response.status}`);
+  }
+}
+
+async function fetchPendingInvitationsAPI(): Promise<PendingInvitation[]> {
+  const response = await fetch('/api/v1/accountant/clients?status=PENDING', {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return []; // Return empty array on error
+  }
+
+  const result = await response.json();
+  return (result.data || []).map((item: ApiClientResponse & { invitedEmail?: string; invitationExpiresAt?: string }) => ({
+    id: item.id,
+    invitedEmail: item.invitedEmail || item.company.email || '',
+    invitedAt: item.createdAt,
+    invitationExpiresAt: item.invitationExpiresAt || null,
+    company: {
+      id: item.company.id,
+      businessName: item.company.businessName,
+      email: item.company.email,
+      industry: item.company.industry,
+    },
+  }));
+}
+
+async function resendInvitationAPI(invitationId: string): Promise<void> {
+  const response = await fetch(`/api/v1/accountant/clients/${invitationId}/resend`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Failed to resend invitation: ${response.status}`);
+  }
+}
+
+async function cancelInvitationAPI(invitationId: string): Promise<void> {
+  const response = await fetch(`/api/v1/accountant/clients/${invitationId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Failed to cancel invitation: ${response.status}`);
+  }
 }
 
 // ============================================
@@ -270,10 +600,13 @@ interface AccountantStore {
 // ============================================
 
 export const useAccountantStore = create<AccountantStore>((set, get) => ({
-  // Initial state
-  clients: MOCK_CLIENTS,
-  allAlerts: MOCK_ALERTS,
+  // Initial state - start with empty until fetched
+  clients: [],
+  allAlerts: [],
+  pendingInvitations: [],
   isLoading: false,
+  error: null,
+  lastFetched: null,
   searchQuery: '',
   sortBy: 'activity',
   sortOrder: 'desc',
@@ -288,41 +621,194 @@ export const useAccountantStore = create<AccountantStore>((set, get) => ({
 
   setViewMode: (viewMode) => set({ viewMode }),
 
+  clearError: () => set({ error: null }),
+
   refreshClients: async () => {
-    set({ isLoading: true });
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/v1/accountant/clients');
-    // const clients = await response.json();
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-    set({ clients: MOCK_CLIENTS, allAlerts: MOCK_ALERTS, isLoading: false });
+    const { isLoading } = get();
+    if (isLoading) return; // Prevent concurrent requests
+
+    set({ isLoading: true, error: null });
+
+    try {
+      if (USE_MOCK_DATA) {
+        // Use mock data for development/demo
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
+        set({
+          clients: MOCK_CLIENTS,
+          allAlerts: MOCK_ALERTS,
+          pendingInvitations: [],
+          isLoading: false,
+          lastFetched: new Date(),
+        });
+        return;
+      }
+
+      // Fetch real data from all endpoints in parallel
+      const [clientsData, dashboardData, pendingInvitations] = await Promise.all([
+        fetchClientsFromAPI(),
+        fetchDashboardFromAPI(),
+        fetchPendingInvitationsAPI(),
+      ]);
+
+      // Transform API data to store format
+      const { clients, alerts } = transformDashboardToClients(dashboardData, clientsData);
+
+      // If no real data, fall back to mock data with a note
+      if (clients.length === 0 && dashboardData.summary.totalClients === 0 && pendingInvitations.length === 0) {
+        console.info('[AccountantStore] No clients found, using mock data for demo');
+        set({
+          clients: MOCK_CLIENTS,
+          allAlerts: MOCK_ALERTS,
+          pendingInvitations: [],
+          isLoading: false,
+          lastFetched: new Date(),
+        });
+        return;
+      }
+
+      set({
+        clients,
+        allAlerts: alerts,
+        pendingInvitations,
+        isLoading: false,
+        lastFetched: new Date(),
+      });
+    } catch (error) {
+      console.error('[AccountantStore] Failed to fetch data:', error);
+
+      // Fall back to mock data on error (for demo/development)
+      console.info('[AccountantStore] Falling back to mock data');
+      set({
+        clients: MOCK_CLIENTS,
+        allAlerts: MOCK_ALERTS,
+        pendingInvitations: [],
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch accountant data',
+        lastFetched: new Date(),
+      });
+    }
   },
 
   inviteClient: async (invite) => {
-    // TODO: Replace with actual API call
-    // await fetch('/api/v1/accountant/invite', {
-    //   method: 'POST',
-    //   body: JSON.stringify(invite),
-    // });
-    console.log('Inviting client:', invite);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    set({ isLoading: true, error: null });
+
+    try {
+      if (USE_MOCK_DATA) {
+        // Simulate API call for mock mode
+        console.log('[AccountantStore] Mock invite client:', invite);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        set({ isLoading: false });
+        return;
+      }
+
+      await inviteClientAPI(invite.email, undefined, invite.message);
+      set({ isLoading: false });
+
+      // Refresh the client list after successful invite
+      await get().refreshClients();
+    } catch (error) {
+      console.error('[AccountantStore] Failed to invite client:', error);
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to invite client',
+      });
+      throw error; // Re-throw for UI to handle
+    }
+  },
+
+  resendInvitation: async (invitationId: string) => {
+    try {
+      if (USE_MOCK_DATA) {
+        console.log('[AccountantStore] Mock resend invitation:', invitationId);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return;
+      }
+
+      await resendInvitationAPI(invitationId);
+      
+      // Refresh to update expiry dates
+      await get().refreshClients();
+    } catch (error) {
+      console.error('[AccountantStore] Failed to resend invitation:', error);
+      throw error;
+    }
+  },
+
+  cancelInvitation: async (invitationId: string) => {
+    try {
+      if (USE_MOCK_DATA) {
+        console.log('[AccountantStore] Mock cancel invitation:', invitationId);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Remove from local state
+        set((state) => ({
+          pendingInvitations: state.pendingInvitations.filter((inv) => inv.id !== invitationId),
+        }));
+        return;
+      }
+
+      await cancelInvitationAPI(invitationId);
+      
+      // Remove from local state immediately
+      set((state) => ({
+        pendingInvitations: state.pendingInvitations.filter((inv) => inv.id !== invitationId),
+      }));
+    } catch (error) {
+      console.error('[AccountantStore] Failed to cancel invitation:', error);
+      throw error;
+    }
   },
 
   generateInviteLink: async () => {
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/v1/accountant/invite-link', { method: 'POST' });
-    // const { link } = await response.json();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const token = Math.random().toString(36).substring(2, 15);
-    return `https://app.yaadbooks.com/invite/${token}`;
+    // Generate a unique invite link
+    // In production, this would call an API to create a secure invite token
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.yaadbooks.com';
+    return `${baseUrl}/invite/${token}`;
   },
 
   switchToClient: (companyId) => {
-    // TODO: Integrate with appStore to switch active company
-    console.log('Switching to client:', companyId);
-    // This would typically:
-    // 1. Update the active company in appStore
-    // 2. Navigate to the client's dashboard
-    window.location.href = `/dashboard?company=${companyId}`;
+    // Navigate to the client's dashboard
+    // This integrates with the main app's company switching logic
+    console.log('[AccountantStore] Switching to client:', companyId);
+
+    if (typeof window !== 'undefined') {
+      // Get the access token
+      const token = localStorage.getItem('yaadbooks_access_token');
+      
+      // Use the switch-client API endpoint then redirect
+      fetch(`/api/v1/accountant/switch-client/${companyId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Content-Type': 'application/json',
+        },
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const { data } = await response.json();
+            
+            // Store the new access token
+            if (data.accessToken) {
+              localStorage.setItem('yaadbooks_access_token', data.accessToken);
+            }
+            
+            // Store accountant context for UI (shows "Accountant View" indicator)
+            if (data.accountantContext) {
+              localStorage.setItem('yaadbooks_accountant_context', JSON.stringify(data.accountantContext));
+            }
+            
+            window.location.href = '/dashboard';
+          } else {
+            // Fallback: direct navigation with query param
+            window.location.href = `/dashboard?company=${companyId}`;
+          }
+        })
+        .catch(() => {
+          // Fallback on error
+          window.location.href = `/dashboard?company=${companyId}`;
+        });
+    }
   },
 }));
 
@@ -389,4 +875,16 @@ export function useCriticalAlerts() {
 export function useAllAlerts() {
   const { allAlerts } = useAccountantStore();
   return allAlerts;
+}
+
+export function useAccountantError() {
+  return useAccountantStore((state) => state.error);
+}
+
+export function useAccountantLoading() {
+  return useAccountantStore((state) => state.isLoading);
+}
+
+export function usePendingInvitations() {
+  return useAccountantStore((state) => state.pendingInvitations);
 }

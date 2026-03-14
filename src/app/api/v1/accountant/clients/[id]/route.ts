@@ -130,12 +130,21 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Soft revoke rather than hard delete for audit trail
+    // Also clear any pending invitation tokens
     await prisma.accountantClient.update({
       where: { id },
-      data: { status: 'REVOKED' },
+      data: {
+        status: 'REVOKED',
+        invitationToken: null,
+        invitationExpiresAt: null,
+      },
     });
 
-    return NextResponse.json({ success: true, message: 'Client access revoked' });
+    const message = existing.status === 'PENDING'
+      ? 'Invitation cancelled'
+      : 'Client access revoked';
+
+    return NextResponse.json({ success: true, message });
   } catch (error) {
     return internalError(error instanceof Error ? error.message : 'Failed to remove client');
   }

@@ -7,6 +7,7 @@ import { z } from 'zod/v4';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth/middleware';
 import { badRequest, forbidden, internalError } from '@/lib/api-error';
+import { createInvitation } from '@/lib/accountant/invitation-service';
 
 // ---- GET (List Clients) ----
 
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
 const inviteClientSchema = z.object({
   email: z.email('Invalid email address'),
   notes: z.string().max(500).optional(),
+  message: z.string().max(500).optional(), // Personal message for email
   canAccessPayroll: z.boolean().default(true),
   canAccessBanking: z.boolean().default(true),
   canExportData: z.boolean().default(true),
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
       return badRequest('Validation failed', { validation: [validation.error.message] });
     }
 
-    const { email, notes, canAccessPayroll, canAccessBanking, canExportData } = validation.data;
+    const { email, notes, message, canAccessPayroll, canAccessBanking, canExportData } = validation.data;
 
     // Find the company by owner email
     const company = await prisma.company.findFirst({
@@ -109,47 +111,23 @@ export async function POST(request: NextRequest) {
       return badRequest('No company found with this email. The business must have a YaadBooks account first.');
     }
 
-    // Check if relationship already exists
-    const existing = await prisma.accountantClient.findUnique({
-      where: {
-        accountantId_companyId: {
-          accountantId: user!.sub,
-          companyId: company.id,
-        },
-      },
+    // Use the invitation service to create invitation and send email
+    const result = await createInvitation({
+      accountantId: user!.sub,
+      companyId: company.id,
+      invitedEmail: email,
+      notes,
+      canAccessPayroll,
+      canAccessBanking,
+      canExportData,
+      personalMessage: message,
     });
 
-    if (existing) {
-      return badRequest('You already have a relationship with this client');
+    if (!result.success) {
+      return badRequest(result.error || 'Failed to create invitation');
     }
 
-    // Create the accountant-client relationship
-    const accountantClient = await prisma.accountantClient.create({
-      data: {
-        accountantId: user!.sub,
-        companyId: company.id,
-        invitedEmail: email,
-        status: 'PENDING',
-        notes,
-        canAccessPayroll,
-        canAccessBanking,
-        canExportData,
-      },
-      include: {
-        company: {
-          select: {
-            id: true,
-            businessName: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    // TODO: Send invitation email to company owner
-    // await sendAccountantInvitationEmail(company.owner.email, user!.email);
-
-    return NextResponse.json({ data: accountantClient }, { status: 201 });
+    return NextResponse.json({ data: result.invitation }, { status: 201 });
   } catch (error) {
     return internalError(error instanceof Error ? error.message : 'Failed to invite client');
   }
