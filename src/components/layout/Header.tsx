@@ -71,22 +71,19 @@ export function Header() {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      const response = await fetch('/api/auth/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
-
-      if (response.ok) {
-        // Cookies are httpOnly — server cleared them in the logout response.
-        // Clear in-memory token and redirect to login.
-        setAccessToken(null);
-        router.push('/login');
-        router.refresh();
-      }
     } catch (error) {
       console.error('Logout error:', error);
+      // Continue to redirect even if API call fails
     } finally {
-      setLoggingOut(false);
+      // ALWAYS clear token and redirect — don't leave user stuck on dashboard
+      // Even if logout API fails, clear local state and send to login
+      setAccessToken(null);
+      router.push('/login');
+      router.refresh();
     }
   };
 
