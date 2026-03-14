@@ -24,7 +24,7 @@ export type Permission =
   // Expenses
   | 'expenses:read' | 'expenses:create' | 'expenses:update' | 'expenses:delete' | 'expenses:approve'
   // Payroll
-  | 'payroll:read' | 'payroll:create' | 'payroll:approve'
+  | 'payroll:read' | 'payroll:create' | 'payroll:update' | 'payroll:delete' | 'payroll:approve'
   // GL / Accounting
   | 'gl:read' | 'gl:create' | 'gl:update' | 'gl:delete'
   | 'journal:read' | 'journal:create' | 'journal:update' | 'journal:delete' | 'journal:post'
@@ -102,7 +102,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'invoices:delete', 'invoices:approve',
     'quotations:delete',
     'expenses:delete', 'expenses:approve',
-    'payroll:create', 'payroll:approve',
+    'payroll:create', 'payroll:update', 'payroll:delete', 'payroll:approve',
     'gl:create', 'gl:update', 'gl:delete',
     'journal:create', 'journal:update', 'journal:delete', 'journal:post',
     'banking:update', 'banking:delete', 'banking:reconcile',

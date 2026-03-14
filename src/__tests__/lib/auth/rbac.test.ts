@@ -71,6 +71,8 @@ describe('RBAC — Role-Based Access Control', () => {
       expect(perms).toContain('invoices:approve');
       expect(perms).toContain('expenses:approve');
       expect(perms).toContain('payroll:create');
+      expect(perms).toContain('payroll:update');
+      expect(perms).toContain('payroll:delete');
       expect(perms).toContain('payroll:approve');
       expect(perms).toContain('gl:create');
       expect(perms).toContain('journal:post');

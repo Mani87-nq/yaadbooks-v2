@@ -541,12 +541,12 @@ export default function PayrollPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <PermissionGate permission="payroll:create">
+                          <PermissionGate permission="payroll:update">
                             <Button variant="ghost" size="sm" onClick={() => handleOpenEmployeeModal(employee)}>
                               <PencilIcon className="w-4 h-4" />
                             </Button>
                           </PermissionGate>
-                          <PermissionGate permission="payroll:create">
+                          <PermissionGate permission="payroll:delete">
                             <Button
                               variant="ghost"
                               size="sm"

@@ -45,7 +45,7 @@ const updateEmployeeSchema = z.object({
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const { user, error: authError } = await requirePermission(request, 'payroll:create');
+    const { user, error: authError } = await requirePermission(request, 'payroll:update');
     if (authError) return authError;
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const { user, error: authError } = await requirePermission(request, 'payroll:create');
+    const { user, error: authError } = await requirePermission(request, 'payroll:delete');
     if (authError) return authError;
     const { companyId, error: companyError } = requireCompany(user!);
     if (companyError) return companyError;
