@@ -67,11 +67,13 @@ const PLANS = [
       'Unlimited users',
       '3 companies',
       'Unlimited invoices',
-      '1 Industry Module included',
+      // HIDDEN: Industry modules not yet built
+      // '1 Industry Module included',
       'Employee Portal & Kiosk',
       'Full offline mode',
       'AI assistant',
-      'WhatsApp notifications',
+      // HIDDEN: WhatsApp not yet implemented
+      // 'WhatsApp notifications',
     ],
     cta: 'Start Free Trial',
     popular: true,

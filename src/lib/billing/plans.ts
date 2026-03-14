@@ -96,7 +96,8 @@ export const PLANS: SubscriptionPlan[] = [
       'Employee Portal & Kiosk Mode',
       'UNLIMITED Users & Terminals',
       'AI Business Assistant',
-      'WhatsApp Notifications',
+      // HIDDEN: WhatsApp not yet implemented
+      // 'WhatsApp Notifications',
       'Priority Support',
     ],
   },
@@ -144,7 +145,9 @@ export const PLANS: SubscriptionPlan[] = [
       'API Access',
       'Custom Integrations',
       'Onboarding & Training',
-      'Priority Phone & WhatsApp Support',
+      // HIDDEN: WhatsApp not yet implemented
+      // 'Priority Phone & WhatsApp Support',
+      'Priority Phone Support',
     ],
   },
 ];

@@ -40,7 +40,7 @@ const FEATURE_NAMES: Record<TierFeature, string> = {
   kiosk_mode: 'Kiosk Mode',
   industry_modules: 'Industry Modules',
   ai_assistant: 'AI Business Assistant',
-  whatsapp_notifications: 'WhatsApp Notifications',
+  whatsapp_notifications: 'WhatsApp Notifications (Coming Soon)',  // Not yet implemented
   multi_location: 'Multi-Location Support',
   advanced_analytics: 'Advanced Analytics',
   custom_reports: 'Custom Report Builder',
@@ -74,7 +74,7 @@ const TIER_BENEFITS: Record<string, string[]> = {
     'Employee Portal & Kiosk',
     '1 Industry Module',
     'AI Business Assistant',
-    'WhatsApp Notifications',
+    // 'WhatsApp Notifications',  // Not yet implemented
     'Unlimited Users',
   ],
   business: [

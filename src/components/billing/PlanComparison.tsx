@@ -58,12 +58,13 @@ const COMPARISON_ROWS: ComparisonRow[] = [
       return plan.id === 'professional' || plan.id === 'business' || plan.id === 'enterprise';
     },
   },
-  {
-    label: 'WhatsApp Notifications',
-    getValue: (plan) => {
-      return plan.id === 'professional' || plan.id === 'business' || plan.id === 'enterprise';
-    },
-  },
+  // HIDDEN: WhatsApp not yet implemented
+  // {
+  //   label: 'WhatsApp Notifications',
+  //   getValue: (plan) => {
+  //     return plan.id === 'professional' || plan.id === 'business' || plan.id === 'enterprise';
+  //   },
+  // },
   {
     label: 'API Access',
     getValue: (plan) => plan.id === 'enterprise',
@@ -76,7 +77,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
         case 'starter': return 'Email';
         case 'professional': return 'Priority';
         case 'business': return 'Dedicated Rep';
-        case 'enterprise': return 'Phone & WhatsApp';
+        case 'enterprise': return 'Phone';  // WhatsApp not yet implemented
         default: return 'Email';
       }
     },

@@ -136,7 +136,8 @@ const navigation: NavGroup[] = [
   {
     name: 'System',
     items: [
-      { name: 'Modules', href: '/modules', icon: PuzzlePieceIcon, badge: 'NEW', permission: null, tierFeature: 'industry_modules' },
+      // HIDDEN: Industry modules have UI but no API routes - hiding until backend is built
+      // { name: 'Modules', href: '/modules', icon: PuzzlePieceIcon, badge: 'NEW', permission: null, tierFeature: 'industry_modules' },
       { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, permission: 'settings:read' },
       { name: 'Billing', href: '/billing', icon: CreditCardIcon, permission: null },
       { name: 'Receipt Printer', href: '/settings/receipt-printer', icon: PrinterIcon, badge: 'NEW', permission: null },

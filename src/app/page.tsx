@@ -438,7 +438,7 @@ export default async function LandingPage() {
                     'Commission tracking per stylist — auto-calculated in J$',
                     'Walk-in queue management with estimated wait times',
                     'Service menu with duration, pricing, and add-ons',
-                    'Client loyalty tracking and rebooking reminders via WhatsApp',
+                    'Client loyalty tracking and rebooking reminders via SMS/Email',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-gray-600">
                       <svg className="w-5 h-5 text-pink-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1001,7 +1001,7 @@ export default async function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: '📄', title: 'Professional Invoicing', desc: 'Beautiful invoices with automatic GCT. Send via email or WhatsApp.' },
+              { icon: '📄', title: 'Professional Invoicing', desc: 'Beautiful invoices with automatic GCT. Send via email instantly.' },
               { icon: '🛒', title: 'Point of Sale', desc: 'Fast, touch-friendly POS for any business. Works offline.' },
               { icon: '📦', title: 'Inventory Management', desc: 'Track stock, manage variants, barcode scanning, multi-location.' },
               { icon: '💰', title: 'Payroll & Compliance', desc: 'Auto-calculate NIS, NHT, PAYE, Ed Tax. Generate payslips instantly.' },
