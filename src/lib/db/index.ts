@@ -29,7 +29,10 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   const pool = new pg.Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
+  // Type assertion needed: @prisma/adapter-pg bundles its own @types/pg
+  // which can conflict with the top-level @types/pg version
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adapter = new PrismaPg(pool as any);
 
   return new PrismaClient({
     adapter,
