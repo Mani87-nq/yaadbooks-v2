@@ -1299,6 +1299,7 @@ export default async function LandingPage() {
               <ul className="space-y-2">
                 <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
+                <li><Link href="/security" className="hover:text-white">Security</Link></li>
                 <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
               </ul>
             </div>
@@ -1320,6 +1321,7 @@ export default async function LandingPage() {
             <div className="flex gap-6 text-sm">
               <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white">Terms of Service</Link>
+              <Link href="/security" className="hover:text-white">Security</Link>
             </div>
           </div>
         </div>
