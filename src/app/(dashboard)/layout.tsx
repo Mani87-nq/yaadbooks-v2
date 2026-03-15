@@ -2,6 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { DashboardLayoutClient } from './DashboardLayoutClient';
 
+// All dashboard pages require auth — skip static prerendering
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardRootLayout({
   children,
 }: {
