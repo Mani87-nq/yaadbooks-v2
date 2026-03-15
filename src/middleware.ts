@@ -30,6 +30,7 @@ const PUBLIC_ROUTES = [
   '/verify-email',
   '/privacy',
   '/terms',
+  '/security',
   '/legal/',              // Redirects to /terms and /privacy
   '/contact',
   '/billing/success',
