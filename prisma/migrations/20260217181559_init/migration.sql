@@ -127,12 +127,6 @@ CREATE TYPE "AuditAction" AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'RESTORE', 'LOG
 -- CreateEnum
 CREATE TYPE "DiscountType" AS ENUM ('FIXED', 'PERCENTAGE');
 
--- CreateEnum
-CREATE TYPE "SubscriptionPlan" AS ENUM ('STARTER', 'BUSINESS', 'PRO', 'ENTERPRISE');
-
--- CreateEnum
-CREATE TYPE "SubscriptionStatus" AS ENUM ('TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELLED', 'INACTIVE');
-
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -276,12 +270,6 @@ CREATE TABLE "Company" (
     "invoiceTemplate" TEXT NOT NULL DEFAULT 'modern',
     "primaryColor" TEXT NOT NULL DEFAULT '#1976D2',
     "accentColor" TEXT NOT NULL DEFAULT '#FF9800',
-    "subscriptionPlan" "SubscriptionPlan" DEFAULT 'STARTER',
-    "subscriptionStatus" "SubscriptionStatus" DEFAULT 'INACTIVE',
-    "stripeCustomerId" TEXT,
-    "stripeSubscriptionId" TEXT,
-    "subscriptionStartDate" TIMESTAMP(3),
-    "subscriptionEndDate" TIMESTAMP(3),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
