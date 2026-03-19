@@ -1,11 +1,39 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Security headers to prevent clickjacking and other attacks
+const securityHeaders = [
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: false,
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+    ];
   },
 };
 
