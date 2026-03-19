@@ -535,6 +535,7 @@ model User {
   // Relations
   companyMemberships CompanyMember[]
   sessions           Session[]
+  oAuthAccounts      OAuthAccount[]
   auditLogs          AuditLog[]      @relation("AuditUser")
   ownedCompanies     Company[]       @relation("CompanyOwner")
   createdJournals    JournalEntry[]  @relation("JournalCreatedBy")
@@ -563,6 +564,25 @@ model Session {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+}
+
+/// OAuth account linking (Google, Apple, etc.)
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String   // google, apple, etc.
+  providerAccountId String   // User ID from the OAuth provider
+  accessToken       String?  // Encrypted at rest
+  refreshToken      String?  // Encrypted at rest
+  expiresAt         DateTime?
+  tokenType         String?
+  scope             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId], name: "provider_providerAccountId")
+  @@index([userId])
 }
 
 /// Exchange rate history - rates are stored as 1 foreign currency = X JMD
@@ -705,6 +725,20 @@ model Company {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  // Subscription & Billing
+  subscriptionPlan      String?   // FREE, STARTER, PROFESSIONAL, BUSINESS, ENTERPRISE
+  subscriptionStatus    String?   // TRIALING, ACTIVE, PAST_DUE, CANCELED, EXPIRED
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  stripeCustomerId      String?   // Stripe customer ID
+  stripeSubscriptionId  String?   // Stripe subscription ID
+  billingInterval       String?   // monthly, yearly
+  paymentFailedAt       DateTime? // When payment last failed
+  gracePeriodNotified   Boolean?  // Grace period notification sent
+  selectedModule        String?   // hospitality, construction, retail, manufacturing, services, etc.
+  referredByCode        String?   // Referral code used during signup
+  terminalCode          String?   // Code for POS terminal pairing
 
   // Relations
   members            CompanyMember[]
@@ -1377,6 +1411,10 @@ model Employee {
   // Banking
   bankName          String?
   bankAccountNumber String?
+  
+  // Pension
+  pensionPlanId String?
+  pensionPlan   PensionPlan? @relation(fields: [pensionPlanId], references: [id])
 
   // Audit
   isActive  Boolean   @default(true)
@@ -1522,6 +1560,7 @@ model GLAccount {
   // Relations
   journalLines    JournalLine[]
   accountBalances AccountBalance[]
+  budgetLines     BudgetLine[]
 
   @@unique([companyId, accountNumber])
   @@index([companyId])
@@ -2295,9 +2334,11 @@ model PosTerminal {
 
 /// POS Session (shift)
 model PosSession {
-  id        String  @id @default(cuid())
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  companyId     String
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  businessDayId String?
+  businessDay   BusinessDay? @relation(fields: [businessDayId], references: [id])
 
   terminalId   String
   terminal     PosTerminal @relation(fields: [terminalId], references: [id])
@@ -2328,8 +2369,9 @@ model PosSession {
   updatedAt DateTime @updatedAt
 
   // Relations
-  cashMovements CashMovement[]
-  orders        PosOrder[]
+  cashMovements    CashMovement[]
+  orders           PosOrder[]
+  cashDrawerCounts CashDrawerCount[]
 
   @@index([companyId])
   @@index([terminalId])
@@ -2423,6 +2465,7 @@ model PosOrder {
   // Relations
   items    PosOrderItem[]
   payments PosPayment[]
+  returns  PosReturn[]
 
   @@unique([companyId, orderNumber])
   @@index([companyId])
@@ -2962,4 +3005,611 @@ model GoodsReceivedNoteItem {
   rejectionReason  String?
 
   @@index([goodsReceivedNoteId])
+}
+
+/// Referral codes for signup discounts and trial extensions
+model ReferralCode {
+  id             String    @id @default(cuid())
+  code           String    @unique // Uppercase code, e.g., LAUNCH2026
+  description    String?
+  companyId      String?   // Which company created this code (null for system codes)
+  createdByEmail String?   // Admin who created the code
+
+  // Discount settings
+  discountType   String    @default("PERCENTAGE") // PERCENTAGE, FIXED_AMOUNT
+  discountValue  Decimal   @default(0) @db.Decimal(10, 2)
+  trialExtendDays Int      @default(0) // Extra trial days when redeemed
+
+  // Usage limits
+  maxUses      Int?      // null = unlimited
+  currentUses  Int       @default(0)
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+
+  // Audit
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  redemptions ReferralRedemption[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+/// Records of referral code redemptions
+model ReferralRedemption {
+  id                  String   @id @default(cuid())
+  referralCodeId      String
+  referralCode        ReferralCode @relation(fields: [referralCodeId], references: [id])
+  redeemedByUserId    String
+  redeemedByCompanyId String
+
+  // What was applied
+  discountApplied Decimal @default(0) @db.Decimal(10, 2)
+  trialDaysAdded  Int     @default(0)
+
+  // Audit
+  createdAt DateTime @default(now())
+
+  @@index([referralCodeId])
+  @@index([redeemedByCompanyId])
+}
+
+/// Pending team invites (before user registers)
+model PendingInvite {
+  id        String   @id @default(cuid())
+  email     String
+  companyId String
+  role      UserRole @default(STAFF)
+  invitedBy String?  // User ID who sent invite
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([companyId])
+}
+
+/// Webhook event tracking for idempotency
+model WebhookEvent {
+  id        String   @id // Use provider event ID
+  source    String   // stripe, paypal, etc.
+  eventType String
+  processed Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([source])
+  @@index([eventType])
+}
+
+/// Employee profile for POS/self-service (separate from payroll Employee)
+model EmployeeProfile {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String?  // Linked User account (optional)
+  employeeId  String?  // Linked payroll Employee (optional)
+  
+  firstName   String
+  lastName    String
+  displayName String?
+  email       String?
+  phone       String?
+  avatarColor String?
+  pinHash     String?  // For POS clock-in
+  role        String   @default("POS_CASHIER")
+  permissions Json     @default("{}")
+  
+  // Security
+  failedPinAttempts Int       @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  timeOffRequests TimeOffRequest[]
+  shifts          Shift[]
+  scheduledShifts ScheduledShift[]
+  posActions      POSAction[]
+
+  @@index([companyId])
+  @@index([userId])
+}
+
+/// Time-off requests for employees
+model TimeOffRequest {
+  id                String   @id @default(cuid())
+  companyId         String
+  employeeProfileId String
+  employeeProfile   EmployeeProfile @relation(fields: [employeeProfileId], references: [id])
+  
+  startDate   DateTime
+  endDate     DateTime
+  leaveType   String   @default("VACATION") // VACATION, SICK, PERSONAL, OTHER
+  reason      String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  reviewNotes String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([employeeProfileId])
+  @@index([status])
+}
+// ============================================================
+// YAADBOOKS MISSING PRISMA MODELS
+// Total: 15 models needed for build to pass
+// Generated from code analysis on 2026-03-15
+// ============================================================
+
+/// Budget for fiscal year tracking
+model Budget {
+  id         String   @id @default(cuid())
+  companyId  String
+  name       String
+  fiscalYear Int
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  lines BudgetLine[]
+
+  @@unique([companyId, fiscalYear], name: "companyId_fiscalYear")
+  @@index([companyId])
+}
+
+model BudgetLine {
+  id        String    @id @default(cuid())
+  budgetId  String
+  budget    Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId String
+  account   GLAccount @relation(fields: [accountId], references: [id])
+  month1    Decimal   @default(0) @db.Decimal(15, 2)
+  month2    Decimal   @default(0) @db.Decimal(15, 2)
+  month3    Decimal   @default(0) @db.Decimal(15, 2)
+  month4    Decimal   @default(0) @db.Decimal(15, 2)
+  month5    Decimal   @default(0) @db.Decimal(15, 2)
+  month6    Decimal   @default(0) @db.Decimal(15, 2)
+  month7    Decimal   @default(0) @db.Decimal(15, 2)
+  month8    Decimal   @default(0) @db.Decimal(15, 2)
+  month9    Decimal   @default(0) @db.Decimal(15, 2)
+  month10   Decimal   @default(0) @db.Decimal(15, 2)
+  month11   Decimal   @default(0) @db.Decimal(15, 2)
+  month12   Decimal   @default(0) @db.Decimal(15, 2)
+
+  @@index([budgetId])
+  @@index([accountId])
+}
+
+/// POS Business day management
+model BusinessDay {
+  id             String    @id @default(cuid())
+  companyId      String
+  date           DateTime  @db.Date
+  status         String    @default("OPEN") // OPEN, CLOSED
+  actualOpenTime DateTime?
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+  openedBy       String?
+  closedBy       String?
+  notes          String?
+
+  sessions       PosSession[]
+  endOfDayReport EndOfDayReport?
+
+  @@unique([companyId, date])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// End of day report for POS
+model EndOfDayReport {
+  id                String   @id @default(cuid())
+  companyId         String
+  reportNumber      String
+  date              DateTime @db.Date
+  businessDayId     String   @unique
+  businessDay       BusinessDay @relation(fields: [businessDayId], references: [id])
+  openTime          DateTime?
+  closeTime         DateTime?
+  
+  // Sales summary
+  grossSales        Decimal  @default(0) @db.Decimal(15, 2)
+  totalDiscounts    Decimal  @default(0) @db.Decimal(15, 2)
+  totalRefunds      Decimal  @default(0) @db.Decimal(15, 2)
+  totalVoids        Decimal  @default(0) @db.Decimal(15, 2)
+  netSales          Decimal  @default(0) @db.Decimal(15, 2)
+  totalTransactions Int      @default(0)
+  
+  // Tax
+  gctRate           Decimal? @db.Decimal(5, 4)
+  taxableAmount     Decimal  @default(0) @db.Decimal(15, 2)
+  exemptAmount      Decimal  @default(0) @db.Decimal(15, 2)
+  gctCollected      Decimal  @default(0) @db.Decimal(15, 2)
+  
+  // Cash
+  totalOpeningCash  Decimal  @default(0) @db.Decimal(15, 2)
+  totalCashSales    Decimal  @default(0) @db.Decimal(15, 2)
+  totalCashRefunds  Decimal  @default(0) @db.Decimal(15, 2)
+  totalPayouts      Decimal  @default(0) @db.Decimal(15, 2)
+  totalDrops        Decimal  @default(0) @db.Decimal(15, 2)
+  expectedCash      Decimal  @default(0) @db.Decimal(15, 2)
+  actualCash        Decimal  @default(0) @db.Decimal(15, 2)
+  cashVariance      Decimal  @default(0) @db.Decimal(15, 2)
+  cashStatus        String?
+  
+  paymentBreakdown  Json?
+  sessionCount      Int      @default(0)
+  
+  createdAt         DateTime @default(now())
+
+  @@unique([companyId, reportNumber])
+  @@index([companyId])
+  @@index([date])
+}
+
+/// Cash drawer denomination count
+model CashDrawerCount {
+  id             String      @id @default(cuid())
+  sessionId      String
+  session        PosSession  @relation(fields: [sessionId], references: [id])
+  countType      String      // OPENING, CLOSING, MID_SHIFT
+  expectedAmount Decimal?    @db.Decimal(15, 2)
+  actualAmount   Decimal     @db.Decimal(15, 2)
+  variance       Decimal?    @db.Decimal(15, 2)
+  denominations  Json?       // Denomination breakdown
+  notes          String?
+  countedBy      String?
+  createdAt      DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+/// Cash drawer events (paidIn, paidOut, opening, closing)
+model CashDrawerEvent {
+  id                String   @id @default(cuid())
+  companyId         String
+  shiftId           String?
+  shift             Shift?   @relation(fields: [shiftId], references: [id])
+  employeeProfileId String?
+  eventType         String   // OPENING_COUNT, CLOSING_COUNT, PAID_IN, PAID_OUT, DROP, PICKUP
+  amount            Decimal  @db.Decimal(15, 2)
+  expectedAmount    Decimal? @db.Decimal(15, 2)
+  variance          Decimal? @db.Decimal(15, 2)
+  denominations     Json?    // Denomination breakdown
+  reason            String?
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  @@index([companyId])
+  @@index([shiftId])
+}
+
+/// Company module activation
+model CompanyModule {
+  id            String    @id @default(cuid())
+  companyId     String
+  moduleId      String    // restaurant, retail, hospitality, etc.
+  isActive      Boolean   @default(true)
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+  settings      Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([companyId, moduleId], name: "companyId_moduleId")
+  @@index([companyId])
+}
+
+/// Kiosk device registration for employee portal
+model KioskDevice {
+  id              String    @id @default(cuid())
+  companyId       String
+  deviceToken     String    @unique
+  deviceName      String
+  deviceType      String?   // TABLET, PHONE, DESKTOP
+  userAgent       String?
+  autoLockMinutes Int       @default(5)
+  loginMode       String    @default("PIN") // PIN, BIOMETRIC
+  isActive        Boolean   @default(true)
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+}
+
+/// Pension plan configuration
+model PensionPlan {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  providerName String?
+  policyNumber String?
+  employeeRate Decimal  @db.Decimal(5, 4) // e.g., 0.05 = 5%
+  employerRate Decimal  @db.Decimal(5, 4)
+  isApproved   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employees Employee[]
+
+  @@index([companyId])
+}
+
+/// POS action audit log
+model POSAction {
+  id                  String           @id @default(cuid())
+  companyId           String
+  employeeProfileId   String?
+  employeeProfile     EmployeeProfile? @relation(fields: [employeeProfileId], references: [id])
+  overrideByProfileId String?          // Manager who authorized override
+  overrideReason      String?          // Reason for override
+  actionType          String           // CLOCK_IN, CLOCK_OUT, OVERRIDE, VOID, REFUND, FAILED_PIN, etc.
+  description         String?
+  shiftId             String?
+  terminalId          String?
+  orderId             String?
+  amount              Decimal?         @db.Decimal(15, 2)
+  ipAddress           String?
+  userAgent           String?
+  metadata            Json?
+  createdAt           DateTime         @default(now())
+
+  @@index([companyId])
+  @@index([employeeProfileId])
+  @@index([actionType])
+}
+
+/// POS return tracking
+model PosReturn {
+  id                  String    @id @default(cuid())
+  companyId           String
+  returnNumber        String
+  originalOrderId     String?
+  originalOrder       PosOrder? @relation(fields: [originalOrderId], references: [id])
+  originalOrderNumber String?
+  sessionId           String?
+  customerId          String?
+  customerName        String?
+  subtotal            Decimal   @db.Decimal(15, 2)
+  gctAmount           Decimal   @default(0) @db.Decimal(15, 2)
+  totalRefund         Decimal   @db.Decimal(15, 2)
+  refundMethod        String    // CASH, CARD, STORE_CREDIT
+  returnReason        String?
+  notes               String?
+  status              String    @default("PENDING") // PENDING, COMPLETED, VOIDED
+  glTransactionId     String?   // GL journal entry ID
+  processedBy         String?
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+
+  items PosReturnItem[]
+
+  @@unique([companyId, returnNumber])
+  @@index([companyId])
+  @@index([originalOrderId])
+}
+
+model PosReturnItem {
+  id                String    @id @default(cuid())
+  returnId          String
+  return            PosReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItemId       String?
+  productId         String?
+  sku               String?
+  barcode           String?
+  name              String
+  quantityReturned  Int
+  unitPrice         Decimal   @db.Decimal(15, 2)
+  refundAmount      Decimal   @db.Decimal(15, 2)
+  returnReason      String    // DEFECTIVE, WRONG_ITEM, CUSTOMER_CHANGED_MIND, DAMAGED, OVERCHARGED, DUPLICATE, OTHER
+  reasonNotes       String?
+  condition         String?   // resellable, damaged
+  restockItem       Boolean   @default(false)
+  inventoryRestocked Boolean  @default(false)
+
+  @@index([returnId])
+}
+
+/// Weekly schedule container
+model Schedule {
+  id            String   @id @default(cuid())
+  companyId     String
+  weekStartDate DateTime @db.Date
+  isPublished   Boolean  @default(false)
+  publishedAt   DateTime?
+  publishedBy   String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shifts ScheduledShift[]
+
+  @@unique([companyId, weekStartDate])
+  @@index([companyId])
+}
+
+/// Scheduled shifts for employees
+model ScheduledShift {
+  id                String          @id @default(cuid())
+  companyId         String
+  scheduleId        String?
+  schedule          Schedule?       @relation(fields: [scheduleId], references: [id])
+  employeeProfileId String
+  employeeProfile   EmployeeProfile @relation(fields: [employeeProfileId], references: [id])
+  shiftDate         DateTime        @db.Date
+  startTime         DateTime
+  endTime           DateTime
+  role              String?
+  notes             String?
+  status            String          @default("SCHEDULED") // SCHEDULED, CONFIRMED, CANCELLED
+  createdBy         String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([companyId])
+  @@index([scheduleId])
+  @@index([employeeProfileId])
+  @@index([shiftDate])
+}
+
+/// Employee shift (time clock)
+model Shift {
+  id                String          @id @default(cuid())
+  companyId         String
+  employeeProfileId String
+  employeeProfile   EmployeeProfile @relation(fields: [employeeProfileId], references: [id])
+  terminalId        String?
+  posSessionId      String?
+  clockInAt         DateTime        @default(now())
+  clockOutAt        DateTime?
+  status            String          @default("ACTIVE") // ACTIVE, ON_BREAK, COMPLETED
+  totalMinutes      Int?
+  breakMinutes      Int?
+  openingCash       Decimal?        @db.Decimal(15, 2)
+  closingCash       Decimal?        @db.Decimal(15, 2)
+  expectedCash      Decimal?        @db.Decimal(15, 2)
+  cashVariance      Decimal?        @db.Decimal(15, 2)
+  totalSales        Decimal         @default(0) @db.Decimal(15, 2)
+  totalRefunds      Decimal         @default(0) @db.Decimal(15, 2)
+  totalVoids        Decimal         @default(0) @db.Decimal(15, 2)
+  transactionCount  Int             @default(0)
+  totalTips         Decimal         @default(0) @db.Decimal(15, 2)
+  isOnBreak         Boolean         @default(false)
+  notes             String?
+  createdAt         DateTime        @default(now())
+
+  breaks           ShiftBreak[]
+  cashDrawerEvents CashDrawerEvent[]
+  tipRecords       TipRecord[]
+
+  @@index([companyId])
+  @@index([employeeProfileId])
+  @@index([status])
+}
+
+/// Tip records for shifts
+model TipRecord {
+  id        String   @id @default(cuid())
+  shiftId   String
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(15, 2)
+  source    String?  // CASH, CARD, ORDER
+  orderId   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+}
+
+/// Shift break tracking
+model ShiftBreak {
+  id        String    @id @default(cuid())
+  shiftId   String
+  shift     Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  startAt   DateTime  @default(now())
+  endAt     DateTime?
+  duration  Int?      // minutes
+  breakType String    @default("STANDARD") // STANDARD, LUNCH, UNPAID
+  notes     String?
+
+  @@index([shiftId])
+}
+
+/// Statutory tax remittance tracking (NIS, NHT, PAYE, etc.)
+model StatutoryRemittance {
+  id              String    @id @default(cuid())
+  companyId       String
+  remittanceType  String    // NIS, NHT, PAYE, ED_TAX
+  periodStart     DateTime
+  periodEnd       DateTime
+  amountDue       Decimal   @db.Decimal(15, 2)
+  amountPaid      Decimal   @default(0) @db.Decimal(15, 2)
+  status          String    @default("PENDING") // PENDING, PAID, OVERDUE
+  dueDate         DateTime?
+  paidDate        DateTime?
+  referenceNumber String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([remittanceType])
+  @@index([status])
+}
+
+/// Stock transfer between warehouses
+model StockTransfer {
+  id              String    @id @default(cuid())
+  companyId       String
+  transferNumber  String
+  fromWarehouseId String
+  toWarehouseId   String
+  status          String    @default("DRAFT") // DRAFT, PENDING, IN_TRANSIT, RECEIVED, CANCELLED
+  requestedBy     String?
+  approvedBy      String?
+  receivedBy      String?
+  requestedAt     DateTime  @default(now())
+  approvedAt      DateTime?
+  receivedAt      DateTime?
+  totalItems      Int       @default(0)
+  totalQuantity   Decimal   @default(0) @db.Decimal(15, 4)
+  totalValue      Decimal   @default(0) @db.Decimal(15, 2)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  items StockTransferItem[]
+
+  @@unique([companyId, transferNumber])
+  @@index([companyId])
+  @@index([status])
+}
+
+model StockTransferItem {
+  id                String        @id @default(cuid())
+  transferId        String
+  transfer          StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId         String
+  productName       String
+  sku               String?
+  quantityRequested Decimal       @db.Decimal(15, 4)
+  quantityShipped   Decimal?      @db.Decimal(15, 4)
+  quantityReceived  Decimal?      @db.Decimal(15, 4)
+  unitCost          Decimal       @db.Decimal(15, 4)
+  uomCode           String        @default("EA")
+  notes             String?
+
+  @@index([transferId])
+}
+
+/// Warehouse for multi-location inventory
+model Warehouse {
+  id        String          @id @default(cuid())
+  companyId String
+  name      String
+  code      String
+  address   String?
+  parish    JamaicanParish?
+  phone     String?
+  email     String?
+  manager   String?
+  isDefault Boolean         @default(false)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([companyId, code])
+  @@index([companyId])
 }
